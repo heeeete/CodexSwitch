@@ -7,6 +7,7 @@ PROJECT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 OUTPUT_ROOT="${1:-$PROJECT_ROOT/dist}"
 SIGNING_IDENTITY="${CODE_SIGN_IDENTITY:--}"
 NOTARY_PROFILE="${NOTARY_PROFILE:-}"
+NOTARY_KEYCHAIN="${NOTARY_KEYCHAIN:-}"
 ALLOW_ADHOC="${ALLOW_ADHOC:-0}"
 TARGET_ARCH="${CODEXSWITCH_ARCH:-$(uname -m)}"
 VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$PROJECT_ROOT/Resources/Info.plist")"
@@ -22,6 +23,10 @@ if [[ "$SIGNING_IDENTITY" == "-" && "$ALLOW_ADHOC" != "1" ]]; then
 fi
 if [[ "$SIGNING_IDENTITY" != "-" && -z "$NOTARY_PROFILE" ]]; then
     echo "Set NOTARY_PROFILE to a notarytool keychain profile." >&2
+    exit 1
+fi
+if [[ "$SIGNING_IDENTITY" != "-" && -n "$NOTARY_KEYCHAIN" && ! -f "$NOTARY_KEYCHAIN" ]]; then
+    echo "NOTARY_KEYCHAIN does not exist: $NOTARY_KEYCHAIN" >&2
     exit 1
 fi
 
@@ -76,9 +81,11 @@ NOTARY_ZIP="$STAGING_ROOT/$NOTARY_BASENAME"
 # Developer ID 빌드는 업로드용 ZIP을 공증한 뒤 앱에 티켓을 스테이플한다.
 if [[ "$SIGNING_IDENTITY" != "-" ]]; then
     ditto -c -k --norsrc --keepParent "$STAGING_ROOT/CodexSwitch.app" "$NOTARY_ZIP"
-    xcrun notarytool submit "$NOTARY_ZIP" \
-        --keychain-profile "$NOTARY_PROFILE" \
-        --wait
+    NOTARY_ARGUMENTS=(--keychain-profile "$NOTARY_PROFILE")
+    if [[ -n "$NOTARY_KEYCHAIN" ]]; then
+        NOTARY_ARGUMENTS+=(--keychain "$NOTARY_KEYCHAIN")
+    fi
+    xcrun notarytool submit "$NOTARY_ZIP" "${NOTARY_ARGUMENTS[@]}" --wait
     xcrun stapler staple "$STAGING_ROOT/CodexSwitch.app"
     xcrun stapler validate "$STAGING_ROOT/CodexSwitch.app"
     spctl --assess --type execute --verbose=4 "$STAGING_ROOT/CodexSwitch.app"

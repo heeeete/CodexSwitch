@@ -1,7 +1,61 @@
 # CodexSwitch Release 가이드
 
 이 문서는 CodexSwitch 관리자가 배포 파일을 만들 때 사용하는 절차입니다. 일반
-사용자는 [README의 설치 안내](../README.md#다운로드-및-설치)를 참고하세요.
+사용자는 [README의 설치 안내](../README.md#설치)를 참고하세요.
+
+## 자동화 구성
+
+저장소에는 두 개의 GitHub Actions 워크플로가 있습니다.
+
+| 워크플로 | 실행 시점 | 역할 |
+| --- | --- | --- |
+| `CI` | PR, `main` 반영, 수동 실행 | 테스트와 ad-hoc 앱 검증 |
+| `Release` | 관리자가 Actions 화면에서 실행 | 서명, 공증, ZIP 생성과 Release 게시 |
+
+공개 배포는 `Release` 워크플로 사용을 권장합니다. 로컬 배포 절차는 Actions에
+문제가 있거나 서명 과정을 직접 확인해야 할 때 사용할 수 있습니다.
+
+## Actions 최초 설정
+
+### 1. Developer ID 인증서 준비
+
+키체인 접근에서 private key가 연결된 `Developer ID Application` 인증서를
+`.p12`로 내보냅니다. 내보낼 때 설정한 암호를 보관하고, 파일을 Base64로
+변환합니다.
+
+```bash
+base64 -i ~/Downloads/DeveloperIDApplication.p12 | pbcopy
+```
+
+### 2. App Store Connect Team API Key 준비
+
+[App Store Connect API Key 안내](https://developer.apple.com/help/app-store-connect/get-started/app-store-connect-api/)에
+따라 Team Key를 만들고 `.p8` 파일, Key ID, Issuer ID를 보관합니다. `.p8` 파일은
+한 번만 내려받을 수 있습니다.
+
+```bash
+base64 -i ~/Downloads/AuthKey_XXXXXXXXXX.p8 | pbcopy
+```
+
+### 3. Actions Secrets 등록
+
+GitHub 저장소의 **Settings → Secrets and variables → Actions**에서 다음 값을
+**Repository secrets**로 등록합니다.
+
+| Secret 이름 | 값 |
+| --- | --- |
+| `DEVELOPER_ID_APPLICATION_P12_BASE64` | `.p12` 파일을 Base64로 변환한 문자열 |
+| `DEVELOPER_ID_APPLICATION_P12_PASSWORD` | `.p12`를 내보낼 때 설정한 암호 |
+| `APP_STORE_CONNECT_API_KEY_P8_BASE64` | Team API Key `.p8`의 Base64 문자열 |
+| `APP_STORE_CONNECT_API_KEY_ID` | App Store Connect Key ID |
+| `APP_STORE_CONNECT_API_KEY_ISSUER_ID` | App Store Connect Issuer ID |
+
+인증서와 API Key 파일은 저장소에 올리지 않습니다. 워크플로는 실행할 때마다
+임시 키체인을 만들고 작업이 끝나면 삭제합니다.
+
+Repository secrets는 비공개 저장소를 포함한 모든 현재 GitHub 요금제에서 사용할
+수 있습니다. 저장소를 공개한 뒤 별도의 배포 승인 절차가 필요하면 `release`
+Environment와 승인 규칙을 추가해 Secrets 범위를 더 좁힐 수 있습니다.
 
 ## 릴리스 전 확인
 
@@ -10,7 +64,8 @@
 - Apple Silicon Mac용 공개 배포에는 `Developer ID Application` 인증서와 Apple
   공증 자격증명이 필요합니다.
 
-다음 명령으로 테스트와 로컬 앱 검증을 먼저 실행합니다.
+CI가 통과했는지 확인합니다. 필요하면 다음 명령으로 같은 검증을 로컬에서
+실행할 수 있습니다.
 
 ```bash
 swift test
@@ -28,7 +83,33 @@ swift test
 Git tag는 `v0.1.0`, Release 제목은 `CodexSwitch 0.1.0` 형식을 사용합니다.
 이미 게시한 앱의 코드나 리소스가 바뀌면 버전을 올리고 새로 서명·공증합니다.
 
-## 공증 프로필 준비
+## Actions에서 배포
+
+1. `Resources/Info.plist`의 `CFBundleShortVersionString`과 `CFBundleVersion`을
+   올립니다.
+2. 변경을 `main`에 반영하고 `CI`가 통과할 때까지 기다립니다.
+3. GitHub의 **Actions → Release → Run workflow**를 엽니다.
+4. Branch는 `main`, Version은 `0.2.0`처럼 Info.plist와 같은 값을 입력합니다.
+5. 실행이 끝나면 생성된 태그와 GitHub Release를 확인합니다.
+
+워크플로는 다음 조건을 먼저 검사합니다.
+
+- 숫자 세 자리 버전과 Info.plist 버전이 일치하는지
+- 버전과 `CFBundleVersion`이 이전 릴리스보다 큰지
+- 배포할 커밋이 `origin/main`에 포함되어 있는지
+- 같은 버전의 게시된 Release가 없는지
+
+검사가 끝나면 임시 키체인에 인증서를 가져오고 테스트, 서명, 공증, stapling,
+Gatekeeper 검사를 수행합니다. 공개용 ZIP과 SHA-256 파일을 초안 Release에
+올린 뒤 다시 내려받아 체크섬을 확인하고 게시합니다. 로컬에서 태그를 만들거나
+공증 명령을 따로 실행할 필요는 없습니다.
+
+> [!NOTE]
+> 비공개 저장소의 macOS 러너와 공증 대기 시간은 GitHub Actions 사용량에
+> 포함됩니다. 공개 저장소에서는 표준 GitHub-hosted 러너를 무료로 사용할 수
+> 있습니다.
+
+## 로컬 공증 프로필 준비
 
 공증 자격증명은 프로젝트 파일이 아니라 macOS Keychain에 한 번 저장합니다.
 
@@ -53,7 +134,7 @@ ALLOW_ADHOC=1 ./scripts/package-release.sh
 산출물 이름에는 `-adhoc`이 붙습니다. 이 파일은 Gatekeeper용 Developer ID 서명과
 Apple 공증이 없으므로 공개 배포하면 안 됩니다.
 
-## 배포용 빌드·서명·공증
+## 로컬 배포용 빌드·서명·공증
 
 ```bash
 CODE_SIGN_IDENTITY="Developer ID Application: NAME (TEAM_ID)" \
@@ -103,7 +184,7 @@ spctl --assess --type execute --verbose=4 CodexSwitch.app
 VERIFY_CHATGPT_HOST=1 ./scripts/verify-release.sh dist/CodexSwitch.app
 ```
 
-## GitHub Release
+## 로컬 산출물을 GitHub Release에 게시
 
 공증된 ZIP과 해당 SHA-256 파일만 Release asset으로 올립니다. `CodexSwitch.app`
 폴더, 공증 제출용 임시 ZIP, ad-hoc ZIP은 올리지 않습니다.

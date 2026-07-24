@@ -54,6 +54,22 @@ swift test
 ./scripts/test-clean-install.sh dist/CodexSwitch.app
 ```
 
+## GitHub Actions CI
+
+`CI` 워크플로는 앱 동작에 영향을 주는 파일이 바뀌면 자동으로 실행됩니다.
+
+- `main`을 대상으로 한 Pull Request
+- `main`에 반영된 변경
+- Actions 화면에서 시작한 수동 실행
+
+CI는 Apple Silicon용 앱을 ad-hoc 서명으로 조립한 뒤 Swift 테스트, 고정된 helper의
+무결성, 앱 구조, 아이콘, 아키텍처와 새 사용자 계정 연결 흐름을 확인합니다. PR
+코드에는 Apple 서명·공증 Secrets가 전달되지 않습니다.
+
+`main`이나 수동 실행에서는 결과 화면의 **Artifacts**에서 개발용 ZIP과 SHA-256
+파일을 받을 수 있습니다. 보관 기간은 7일입니다. 이 ZIP은 다른 Mac에서 기능을
+확인하는 용도이며 Developer ID 서명과 Apple 공증을 거친 공개 배포본은 아닙니다.
+
 ## 프로젝트 구조
 
 | 경로 | 역할 |
@@ -65,6 +81,8 @@ swift test
 | `scripts/build-app.sh` | SwiftPM 산출물을 macOS 앱 번들로 조립 |
 | `scripts/verify-release.sh` | 앱 구조와 독립 실행 조건 검증 |
 | `scripts/package-release.sh` | 테스트부터 서명·공증·ZIP 생성까지 처리 |
+| `.github/workflows/ci.yml` | PR·main의 테스트와 개발용 앱 생성 |
+| `.github/workflows/release.yml` | Developer ID 서명·공증과 GitHub Release 게시 |
 
 ## 계정 데이터와 전환
 

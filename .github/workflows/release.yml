@@ -1,0 +1,313 @@
+name: Release
+
+# 관리자가 Actions 화면에서 main의 버전을 확인한 뒤 직접 배포를 시작한다.
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Info.plist와 같은 버전 (예: 0.2.0)"
+        required: true
+        type: string
+
+# 기본 권한은 없애고 실제 게시 작업에만 contents 쓰기를 허용한다.
+permissions: {}
+
+concurrency:
+  group: codexswitch-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Sign, notarize, and publish
+    runs-on: macos-15
+    timeout-minutes: 180
+    permissions:
+      contents: write
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_16.4.app/Contents/Developer
+      CODEXSWITCH_ARCH: arm64
+      NOTARY_PROFILE: CodexSwitch-actions-notary
+
+    steps:
+      # 태그와 릴리스 기록까지 확인할 수 있도록 전체 이력을 가져온다.
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      # Secrets를 열기 전에 main, 버전, 기존 태그·릴리스 상태를 모두 검증한다.
+      - name: Validate release request
+        id: release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REQUESTED_VERSION: ${{ inputs.version }}
+          RELEASE_REF: ${{ github.ref }}
+          RELEASE_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+
+          if [[ "$RELEASE_REF" != "refs/heads/main" ]]; then
+              echo "::error::Release는 main 브랜치에서만 실행할 수 있습니다."
+              exit 1
+          fi
+          if [[ ! "$REQUESTED_VERSION" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
+              echo "::error::버전은 0.2.0과 같은 숫자 세 자리 형식이어야 합니다."
+              exit 1
+          fi
+
+          plist_version="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' Resources/Info.plist)"
+          bundle_version="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' Resources/Info.plist)"
+          release_tag="v$REQUESTED_VERSION"
+
+          if [[ "$REQUESTED_VERSION" != "$plist_version" ]]; then
+              echo "::error::입력한 버전과 Info.plist 버전($plist_version)이 다릅니다."
+              exit 1
+          fi
+          if [[ ! "$bundle_version" =~ ^[1-9][0-9]*$ ]]; then
+              echo "::error::CFBundleVersion은 1 이상의 정수여야 합니다."
+              exit 1
+          fi
+
+          if ! git merge-base --is-ancestor "$RELEASE_SHA" refs/remotes/origin/main; then
+              echo "::error::배포할 커밋이 origin/main에 포함되어 있지 않습니다."
+              exit 1
+          fi
+
+          previous_tag=""
+          while IFS= read -r candidate_tag; do
+              if [[ "$candidate_tag" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$
+                  && "$candidate_tag" != "$release_tag" ]]; then
+                  previous_tag="$candidate_tag"
+                  break
+              fi
+          done < <(git tag --list 'v[0-9]*' --sort=-v:refname)
+
+          if [[ -n "$previous_tag" ]]; then
+              previous_version="${previous_tag#v}"
+              IFS=. read -r current_major current_minor current_patch <<<"$REQUESTED_VERSION"
+              IFS=. read -r previous_major previous_minor previous_patch <<<"$previous_version"
+              if (( current_major < previous_major
+                  || (current_major == previous_major && current_minor < previous_minor)
+                  || (current_major == previous_major && current_minor == previous_minor && current_patch <= previous_patch) )); then
+                  echo "::error::버전 $REQUESTED_VERSION은 이전 릴리스 $previous_version보다 커야 합니다."
+                  exit 1
+              fi
+
+              previous_bundle_version="$(
+                  git show "$previous_tag:Resources/Info.plist" \
+                      | plutil -extract CFBundleVersion raw -o - -
+              )"
+              if [[ ! "$previous_bundle_version" =~ ^[1-9][0-9]*$
+                  || "$bundle_version" -le "$previous_bundle_version" ]]; then
+                  echo "::error::CFBundleVersion $bundle_version은 이전 값 $previous_bundle_version보다 커야 합니다."
+                  exit 1
+              fi
+          fi
+
+          if git rev-parse --verify --quiet "refs/tags/$release_tag" >/dev/null; then
+              tag_sha="$(git rev-list -n 1 "$release_tag")"
+              if [[ "$tag_sha" != "$RELEASE_SHA" ]]; then
+                  echo "::error::$release_tag 태그가 다른 커밋을 가리키고 있습니다."
+                  exit 1
+              fi
+          fi
+
+          if release_json="$(gh release view "$release_tag" --json isDraft,assets 2>/dev/null)"; then
+              if [[ "$(jq -r '.isDraft' <<<"$release_json")" != "true" ]]; then
+                  echo "::error::$release_tag 릴리스가 이미 게시되어 있습니다."
+                  exit 1
+              fi
+
+              unexpected_assets="$(jq -r --arg version "$REQUESTED_VERSION" '
+                .assets[].name
+                | select(
+                    . != ("CodexSwitch-" + $version + "-macos-arm64.zip")
+                    and . != ("CodexSwitch-" + $version + "-macos-arm64.zip.sha256")
+                  )
+              ' <<<"$release_json")"
+              if [[ -n "$unexpected_assets" ]]; then
+                  echo "::error::기존 초안 릴리스에 예상하지 않은 파일이 있습니다: $unexpected_assets"
+                  exit 1
+              fi
+          fi
+
+          {
+              echo "tag=$release_tag"
+              echo "version=$REQUESTED_VERSION"
+          } >> "$GITHUB_OUTPUT"
+
+      # Developer ID 인증서와 App Store Connect Team API Key를 임시 키체인에만 넣는다.
+      - name: Prepare signing and notarization credentials
+        shell: bash
+        env:
+          CERTIFICATE_BASE64: ${{ secrets.DEVELOPER_ID_APPLICATION_P12_BASE64 }}
+          CERTIFICATE_PASSWORD: ${{ secrets.DEVELOPER_ID_APPLICATION_P12_PASSWORD }}
+          API_KEY_BASE64: ${{ secrets.APP_STORE_CONNECT_API_KEY_P8_BASE64 }}
+          API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+          API_KEY_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ISSUER_ID }}
+        run: |
+          set -euo pipefail
+
+          require_secret() {
+              local secret_name="$1"
+              local secret_value="$2"
+              if [[ -z "$secret_value" ]]; then
+                  echo "::error::$secret_name Actions Secret이 비어 있습니다."
+                  missing_secret=1
+              fi
+          }
+
+          missing_secret=0
+          require_secret "DEVELOPER_ID_APPLICATION_P12_BASE64" "$CERTIFICATE_BASE64"
+          require_secret "DEVELOPER_ID_APPLICATION_P12_PASSWORD" "$CERTIFICATE_PASSWORD"
+          require_secret "APP_STORE_CONNECT_API_KEY_P8_BASE64" "$API_KEY_BASE64"
+          require_secret "APP_STORE_CONNECT_API_KEY_ID" "$API_KEY_ID"
+          require_secret "APP_STORE_CONNECT_API_KEY_ISSUER_ID" "$API_KEY_ISSUER_ID"
+          if [[ "$missing_secret" == "1" ]]; then
+              exit 1
+          fi
+
+          keychain_password="$(openssl rand -hex 32)"
+          echo "::add-mask::$keychain_password"
+
+          release_keychain="$RUNNER_TEMP/codexswitch-signing.keychain-db"
+          certificate_path="$RUNNER_TEMP/CodexSwitch-DeveloperIDApplication.p12"
+          api_key_path="$RUNNER_TEMP/CodexSwitch-NotaryKey.p8"
+          printf '%s' "$CERTIFICATE_BASE64" | base64 --decode > "$certificate_path"
+          printf '%s' "$API_KEY_BASE64" | base64 --decode > "$api_key_path"
+          chmod 600 "$certificate_path" "$api_key_path"
+
+          security create-keychain -p "$keychain_password" "$release_keychain"
+          security set-keychain-settings -lut 21600 "$release_keychain"
+          security unlock-keychain -p "$keychain_password" "$release_keychain"
+          security import "$certificate_path" \
+              -P "$CERTIFICATE_PASSWORD" \
+              -A \
+              -t cert \
+              -f pkcs12 \
+              -k "$release_keychain"
+          security set-key-partition-list \
+              -S apple-tool:,apple:,codesign: \
+              -s \
+              -k "$keychain_password" \
+              "$release_keychain"
+          security list-keychains -d user -s "$release_keychain"
+
+          identity_lines="$(security find-identity -v -p codesigning "$release_keychain")"
+          identity_count="$(grep -c '"Developer ID Application:' <<<"$identity_lines" || true)"
+          signing_identity="$(awk -F '"' '/Developer ID Application:/ { print $2; exit }' <<<"$identity_lines")"
+          if [[ "$identity_count" != "1" || -z "$signing_identity" ]]; then
+              echo "::error::.p12에는 유효한 Developer ID Application 인증서가 정확히 하나 있어야 합니다."
+              exit 1
+          fi
+
+          xcrun notarytool store-credentials "$NOTARY_PROFILE" \
+              --key "$api_key_path" \
+              --key-id "$API_KEY_ID" \
+              --issuer "$API_KEY_ISSUER_ID" \
+              --keychain "$release_keychain"
+
+          {
+              echo "CODE_SIGN_IDENTITY=$signing_identity"
+              echo "RELEASE_KEYCHAIN=$release_keychain"
+              echo "NOTARY_KEYCHAIN=$release_keychain"
+          } >> "$GITHUB_ENV"
+          rm -f "$certificate_path" "$api_key_path"
+
+      # 로컬과 같은 스크립트로 테스트부터 서명·공증·staple까지 다시 수행한다.
+      - name: Build, sign, and notarize
+        shell: bash
+        run: ./scripts/package-release.sh
+
+      # 최종 ZIP을 다시 풀어 서명, 공증 티켓, Gatekeeper와 체크섬을 재검증한다.
+      - name: Verify release archive
+        shell: bash
+        env:
+          RELEASE_VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          set -euo pipefail
+
+          archive="dist/CodexSwitch-$RELEASE_VERSION-macos-arm64.zip"
+          checksum="$archive.sha256"
+          test -f "$archive"
+          test -f "$checksum"
+          (
+              cd dist
+              shasum -a 256 -c "$(basename "$checksum")"
+          )
+          unzip -tq "$archive"
+
+          verify_root="$(mktemp -d "$RUNNER_TEMP/codexswitch-release-verify.XXXXXX")"
+          ditto -x -k "$archive" "$verify_root"
+          codesign --verify --deep --strict --verbose=4 "$verify_root/CodexSwitch.app"
+          xcrun stapler validate "$verify_root/CodexSwitch.app"
+          spctl --assess --type execute --verbose=4 "$verify_root/CodexSwitch.app"
+
+      # 초안에 두 파일만 올리고 원격에서 다시 내려받아 검증한 뒤 공개한다.
+      - name: Publish GitHub Release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
+          RELEASE_VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          set -euo pipefail
+
+          archive="dist/CodexSwitch-$RELEASE_VERSION-macos-arm64.zip"
+          checksum="$archive.sha256"
+
+          if release_json="$(gh release view "$RELEASE_TAG" --json isDraft 2>/dev/null)"; then
+              if [[ "$(jq -r '.isDraft' <<<"$release_json")" != "true" ]]; then
+                  echo "::error::$RELEASE_TAG 릴리스가 이미 게시되어 있습니다."
+                  exit 1
+              fi
+          else
+              gh release create "$RELEASE_TAG" \
+                  --draft \
+                  --target "$GITHUB_SHA" \
+                  --title "CodexSwitch $RELEASE_VERSION" \
+                  --generate-notes
+          fi
+
+          gh release upload "$RELEASE_TAG" "$archive" "$checksum" --clobber
+
+          uploaded_assets="$(
+              gh release view "$RELEASE_TAG" \
+                  --json assets \
+                  --jq '.assets | map(.name) | sort | join("\n")'
+          )"
+          expected_assets="$(
+              printf '%s\n%s' \
+                  "CodexSwitch-$RELEASE_VERSION-macos-arm64.zip" \
+                  "CodexSwitch-$RELEASE_VERSION-macos-arm64.zip.sha256"
+          )"
+          if [[ "$uploaded_assets" != "$expected_assets" ]]; then
+              echo "::error::초안 Release에는 공개용 ZIP과 체크섬만 있어야 합니다."
+              exit 1
+          fi
+
+          remote_root="$(mktemp -d "$RUNNER_TEMP/codexswitch-remote-release.XXXXXX")"
+          gh release download "$RELEASE_TAG" \
+              --pattern "CodexSwitch-$RELEASE_VERSION-macos-arm64.zip*" \
+              --dir "$remote_root"
+          (
+              cd "$remote_root"
+              shasum -a 256 -c "CodexSwitch-$RELEASE_VERSION-macos-arm64.zip.sha256"
+              unzip -tq "CodexSwitch-$RELEASE_VERSION-macos-arm64.zip"
+          )
+
+          gh release edit "$RELEASE_TAG" --draft=false --latest
+
+      # 성공·실패와 관계없이 인증서와 공증 자격증명이 든 임시 키체인을 제거한다.
+      - name: Remove temporary credentials
+        if: always()
+        shell: bash
+        run: |
+          security delete-keychain \
+              "$RUNNER_TEMP/codexswitch-signing.keychain-db" \
+              2>/dev/null || true
+          rm -f \
+              "$RUNNER_TEMP/CodexSwitch-DeveloperIDApplication.p12" \
+              "$RUNNER_TEMP/CodexSwitch-NotaryKey.p8"
