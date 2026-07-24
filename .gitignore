@@ -1,0 +1,45 @@
+# Swift Package Manager
+/.build/
+/.swiftpm/
+
+# Xcode
+DerivedData/
+*.xcarchive
+*.xcuserstate
+*.xccheckout
+*.xcscmblueprint
+*.dSYM
+xcuserdata/
+
+# Local releases
+/dist/
+CodexSwitch-*.zip
+CodexSwitch-*.zip.sha256
+*.dmg
+*.pkg
+
+# Local credentials and signing files
+.env
+.env.*
+!.env.example
+*.p8
+*.p12
+*.pem
+*.key
+*.cer
+*.crt
+*.mobileprovision
+*.provisionprofile
+*.keychain
+*.keychain-db
+
+# Editors and macOS
+.idea/
+.vscode/
+.DS_Store
+.AppleDouble
+.LSOverride
+*.log
+
+# Local design review notes
+/design-qa.md

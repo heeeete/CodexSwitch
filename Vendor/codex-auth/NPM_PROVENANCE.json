@@ -1,0 +1,29 @@
+{
+  "version": "0.2.10",
+  "gitHead": "0642f6fa16df2941afe42f8ee5f9ead2d8595a9e",
+  "source": {
+    "repository": "https://github.com/Loongphy/codex-auth",
+    "archive": "upstream/codex-auth-source-0642f6f.tar.gz",
+    "sha256": "ec66175d5b42f40403dbe0f5a5f4ca3f6bea3885d11f9ed36f0a6f4bcba73a9f"
+  },
+  "packages": [
+    {
+      "name": "@loongphy/codex-auth-darwin-arm64",
+      "registryTarball": "https://registry.npmjs.org/@loongphy/codex-auth-darwin-arm64/-/codex-auth-darwin-arm64-0.2.10.tgz",
+      "npmShasum": "294aa8aa07e42334ed1e858d2ded62e6cd908aab",
+      "npmIntegrity": "sha512-N/ItFtzFaxbeaZLQfNJNoFFa5cJ74VXJbqUXTAOxdE67TEhCmfpmiYDAalUs6fdqQ+rJFO8JgdW6ZL2I5jaaTQ==",
+      "archive": "upstream/codex-auth-darwin-arm64-0.2.10.tgz",
+      "archiveSha256": "0ea16a9066486a36d2bc948a030b0448d57f93db8c2e39565fada2106b8f699b",
+      "binarySha256": "5ad7c3cad90cbc7a0a5b717440ffdc2c031dd5c7895bf5a0d062f46b97a61e1b"
+    },
+    {
+      "name": "@loongphy/codex-auth-darwin-x64",
+      "registryTarball": "https://registry.npmjs.org/@loongphy/codex-auth-darwin-x64/-/codex-auth-darwin-x64-0.2.10.tgz",
+      "npmShasum": "0f57e77c08a9f1c5906c3277d6591046fa2438d4",
+      "npmIntegrity": "sha512-JhgXTEcHfXejw0HAUUdTl+Zvb3+HtCGQKRH9ob2hCMWyIfq1w/Rg26itR4qfDGH0NCCo2yuR+E+R6+nACd9t/A==",
+      "archive": "upstream/codex-auth-darwin-x64-0.2.10.tgz",
+      "archiveSha256": "fa98a8bf0d38907fc21f20180aab48e888050990c26ab5082c8287f9304b4c08",
+      "binarySha256": "0a678a300813bce77d5139bcd6aaea6233a92688ba3e04d81e325e940fee02b4"
+    }
+  ]
+}

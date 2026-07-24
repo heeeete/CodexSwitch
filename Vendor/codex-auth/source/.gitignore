@@ -1,0 +1,11 @@
+# Zig build artifacts
+zig-out/
+.zig-cache/
+dist/
+*.tgz
+
+# IDE/Editor
+.idea/
+
+# Local benchmarking workspace
+benchmark/

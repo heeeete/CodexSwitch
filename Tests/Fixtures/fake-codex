@@ -1,0 +1,10 @@
+#!/bin/sh
+
+set -eu
+
+# codex-auth가 전달한 격리 CODEX_HOME에 테스트 인증 파일만 복사한다.
+test "${1:-}" = "login"
+test -n "${CODEX_HOME:-}"
+test -f "${CODEXSWITCH_FAKE_AUTH:-}"
+mkdir -p "$CODEX_HOME"
+cp "$CODEXSWITCH_FAKE_AUTH" "$CODEX_HOME/auth.json"
