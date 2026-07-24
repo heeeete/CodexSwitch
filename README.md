@@ -74,16 +74,11 @@ Mac에 저장된 Codex 인증정보만 지우며 실제 ChatGPT 계정을 삭제
 정지로 이어질 가능성을 경고합니다. 이 기능은 선택 사항이며 기본적으로 꺼져
 있습니다.
 
-## 개발 문서
-
-- [개발 및 로컬 빌드](docs/DEVELOPMENT.md)
-- [서명·공증·Release](docs/RELEASING.md)
-- [오픈소스 출처와 라이선스](THIRD_PARTY_NOTICES.md)
-
 ## 라이선스 및 상표
 
 CodexSwitch 자체 소스에는 별도의 오픈소스 라이선스를 부여하지 않습니다. 포함된
-오픈소스 구성요소에는 각 프로젝트의 라이선스가 적용됩니다.
+오픈소스 구성요소에는 각 프로젝트의 라이선스가 적용됩니다. 자세한 출처와
+라이선스는 [Third-party notices](THIRD_PARTY_NOTICES.md)에서 확인할 수 있습니다.
 
 CodexSwitch는 OpenAI와 제휴하거나 OpenAI가 보증하는 공식 제품이 아닙니다.
 ChatGPT와 Codex는 각 권리자의 상표입니다.
