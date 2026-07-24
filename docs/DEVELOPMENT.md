@@ -1,7 +1,7 @@
-# CodexSwitch 기여 및 개발 가이드
+# CodexSwitch 개발 가이드
 
-사용자 설치와 사용법은 프로젝트 [README](README.md)를 참고하세요. 이 문서는
-소스에서 앱을 빌드하고 변경 사항을 검증하려는 개발자를 위한 안내입니다.
+사용자 설치와 사용법은 프로젝트 [README](../README.md)를 참고하세요. 이 문서는
+소스에서 앱을 빌드하고 내부 동작을 확인하려는 개발자를 위한 안내입니다.
 
 ## 개발 환경
 
@@ -110,7 +110,7 @@ CodexSwitch는 앱에 포함된 helper만 실행하며 전역 npm 설치본으�
 바이너리와 같은지 확인합니다. upstream 아카이브도 별도 manifest로 검증합니다.
 어느 하나라도 다르면 빌드를 중단합니다.
 
-라이선스 전문과 출처는 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)에
+라이선스 전문과 출처는 [THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md)에
 정리되어 있습니다.
 
 ## 보안 경계
@@ -122,6 +122,3 @@ CodexSwitch는 앱에 포함된 helper만 실행하며 전역 npm 설치본으�
 인증 파일은 비밀번호처럼 취급해야 합니다. 실제 `auth.json`, registry, 계정
 스냅샷을 저장소나 이슈에 첨부하지 마세요. CodexSwitch가 계정을 변경하거나
 제거하는 동안 별도의 `codex-auth` 명령도 동시에 실행하지 마세요.
-
-배포 관리자용 서명·공증 절차는 [Release 가이드](docs/RELEASING.md)에 따로
-정리되어 있습니다.
