@@ -16,6 +16,8 @@
   <img src="docs/images/codexswitch-menu.png" width="760" alt="CodexSwitch 메뉴 화면">
 </p>
 -->
+<img width="1630" height="965" alt="생성된 이미지 1-Photoroom" src="https://github.com/user-attachments/assets/8585e61c-0208-42af-a999-28c3016df986" />
+
 
 ## 주요 기능
 
