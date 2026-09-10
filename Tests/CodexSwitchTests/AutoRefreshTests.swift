@@ -42,6 +42,61 @@ final class AutoRefreshTests: XCTestCase {
         XCTAssertNil(store.notice)
     }
 
+    // 원본 사용량 시각이 오래되고 값이 같아도 자동 조회 성공 시 표시 시각은 갱신한다.
+    func testAutomaticRefreshAdvancesTimeEvenWhenUsageIsUnchanged() async throws {
+        let fixture = try Fixture()
+        defer { fixture.cleanUp() }
+        let store = fixture.makeStore()
+        defer { store.autoRefreshEnabled = false }
+        await store.loadLocalAccounts()
+        let firstRefresh = try XCTUnwrap(store.activeAccount?.refreshedAt)
+        try await waitUntil { (store.activeAccount?.refreshedAt ?? .distantPast) > firstRefresh }
+        XCTAssertEqual(store.activeAccount?.account.lastUsage?.primary?.usedPercent, 10)
+        XCTAssertEqual(store.activeAccount?.account.lastUsageAt, 100)
+        let latestRefresh = try XCTUnwrap(store.activeAccount?.refreshedAt)
+        XCTAssertEqual(AccountRefreshStatus.text(since: latestRefresh), "방금 갱신")
+    }
+
+    // 수동 조회도 완료된 뒤에만 시각을 바꾸고 취소·실패·읽기 오류에는 이전 성공 시각을 유지한다.
+    func testManualRefreshTimeOnlyAdvancesAfterSuccessfulRead() async throws {
+        let fixture = try Fixture()
+        defer { fixture.cleanUp() }
+        fixture.defaults.set(false, forKey: "autoRefreshEnabled")
+        let store = fixture.makeStore()
+        await store.loadLocalAccounts()
+        let initialRefresh = try XCTUnwrap(store.activeAccount?.refreshedAt)
+
+        try Data().write(to: fixture.blockURL)
+        store.refresh()
+        try await waitUntil { fixture.invocations.count == 2 }
+        XCTAssertEqual(store.activeAccount?.refreshedAt, initialRefresh)
+        try FileManager.default.removeItem(at: fixture.blockURL)
+        try await waitUntil { !store.isBusy }
+        let completedRefresh = try XCTUnwrap(store.activeAccount?.refreshedAt)
+        XCTAssertGreaterThan(completedRefresh, initialRefresh)
+        XCTAssertEqual(store.activeAccount?.account.lastUsageAt, 100)
+
+        try Data().write(to: fixture.blockURL)
+        store.refresh()
+        try await waitUntil { fixture.invocations.count == 3 }
+        store.cancelRefresh()
+        try await waitUntil { !store.isBusy }
+        XCTAssertEqual(store.activeAccount?.refreshedAt, completedRefresh)
+
+        try Data("#!/bin/sh\nexit 1\n".utf8).write(to: fixture.helperURL)
+        store.refresh()
+        try await waitUntil { !store.isBusy }
+        XCTAssertEqual(store.notice?.style, .error)
+        XCTAssertEqual(store.activeAccount?.refreshedAt, completedRefresh)
+
+        try Data("#!/bin/sh\nexit 0\n".utf8).write(to: fixture.helperURL)
+        try Data("invalid registry".utf8).write(to: fixture.registryURL)
+        store.refresh()
+        try await waitUntil { !store.isBusy }
+        XCTAssertEqual(store.notice?.style, .error)
+        XCTAssertEqual(store.activeAccount?.refreshedAt, completedRefresh)
+    }
+
     // 자동 조회도 기존 API 선택을 따르고 설정을 바꾸면 다음 주기부터 로컬 조회를 사용한다.
     func testAutomaticRefreshUsesCurrentAPISetting() async throws {
         let fixture = try Fixture()
@@ -205,7 +260,7 @@ final class AutoRefreshTests: XCTestCase {
         func writeRegistry(usedPercent: Int, to url: URL) throws {
             let json = """
             {"schema_version":3,"active_account_key":"test","accounts":[
-              {"account_key":"test","email":"test@example.com","last_usage":{
+              {"account_key":"test","email":"test@example.com","last_usage_at":100,"last_usage":{
                 "primary":{"used_percent":\(usedPercent),"window_minutes":300}
               }}
             ]}

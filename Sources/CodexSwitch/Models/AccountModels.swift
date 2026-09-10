@@ -198,6 +198,13 @@ struct UsageMeter: Identifiable, Equatable, Sendable {
 // 화면 동작은 변하지 않는 account_key를 식별자로 사용한다.
 struct AccountListItem: Identifiable, Sendable {
     let account: CodexAccount
+    let refreshedAt: Date?
+
+    // 사용량 원본 시각과 별개로 앱이 조회를 완료한 시각을 표시한다.
+    init(account: CodexAccount, refreshedAt: Date? = nil) {
+        self.account = account
+        self.refreshedAt = refreshedAt
+    }
 
     var id: String { account.id }
 }

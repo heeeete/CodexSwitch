@@ -377,7 +377,9 @@ final class AccountStore: ObservableObject {
 
     private func apply(_ registry: AccountRegistry) {
         activeAccountKey = registry.activeAccountKey
-        accounts = registry.accounts.map(AccountListItem.init(account:))
+        // 조회와 읽기가 성공한 뒤에만 기록하며 사용량이 같아도 완료 시각은 갱신한다.
+        let refreshedAt = Date()
+        accounts = registry.accounts.map { AccountListItem(account: $0, refreshedAt: refreshedAt) }
         didCompleteInitialLoad = true
     }
 

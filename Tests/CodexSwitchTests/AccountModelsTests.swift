@@ -222,51 +222,35 @@ final class AccountModelsTests: XCTestCase {
         XCTAssertEqual(meter.resetCountdown(at: resetDate.addingTimeInterval(1)), "0m")
     }
 
-    // 상대 갱신 문구는 방금·분·시간 경계에서 저장된 timestamp를 정확히 반영한다.
-    func testAccountUsageFreshnessAdvancesAtMinuteAndHourBoundaries() throws {
-        let json = #"""
-        {
-          "account_key": "fresh-account",
-          "email": "fresh@example.com",
-          "alias": null,
-          "account_name": null,
-          "plan": "pro",
-          "last_used_at": null,
-          "last_usage_at": 2000000,
-          "last_usage": null
-        }
-        """#
-        let account = try JSONDecoder().decode(
-            CodexAccount.self,
-            from: Data(json.utf8)
-        )
-        let lastUsageDate = Date(timeIntervalSince1970: 2_000_000)
+    // 기존 문구를 유지하면서 실제 조회 완료 시각을 기준으로 분·시간을 계산한다.
+    func testAccountRefreshStatusAdvancesAtMinuteAndHourBoundaries() {
+        let refreshedAt = Date(timeIntervalSince1970: 2_000_000)
 
         XCTAssertEqual(
-            AccountUsageFreshness.text(
-                for: account,
-                now: lastUsageDate.addingTimeInterval(59)
+            AccountRefreshStatus.text(
+                since: refreshedAt,
+                now: refreshedAt.addingTimeInterval(59)
             ),
             "방금 갱신"
         )
         XCTAssertEqual(
-            AccountUsageFreshness.text(
-                for: account,
-                now: lastUsageDate.addingTimeInterval(60)
+            AccountRefreshStatus.text(
+                since: refreshedAt,
+                now: refreshedAt.addingTimeInterval(60)
             ),
             "갱신 1분 전"
         )
         XCTAssertEqual(
-            AccountUsageFreshness.text(
-                for: account,
-                now: lastUsageDate.addingTimeInterval(3_599)
+            AccountRefreshStatus.text(
+                since: refreshedAt,
+                now: refreshedAt.addingTimeInterval(3_599)
             ),
             "갱신 59분 전"
         )
         XCTAssertEqual(
-            AccountUsageFreshness.text(
-                for: account,
-                now: lastUsageDate.addingTimeInterval(3_600)
+            AccountRefreshStatus.text(
+                since: refreshedAt,
+                now: refreshedAt.addingTimeInterval(3_600)
             ),
             "갱신 1시간 전"
         )

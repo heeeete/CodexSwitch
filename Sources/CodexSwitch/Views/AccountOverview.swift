@@ -130,23 +130,21 @@ private struct AccountSwitcherTab: View {
         if isBusy {
             ProgressView()
                 .controlSize(.mini)
-        } else if let lastUsageAt = item.account.lastUsageAt {
+        } else if let refreshedAt = item.refreshedAt {
             TimelineView(
                 .periodic(
-                    from: Date(timeIntervalSince1970: TimeInterval(lastUsageAt)),
+                    from: refreshedAt,
                     by: 60
                 )
             ) { context in
-                if let freshnessText = AccountUsageFreshness.text(
-                    for: item.account,
+                Text(AccountRefreshStatus.text(
+                    since: refreshedAt,
                     now: context.date
-                ) {
-                    Text(freshnessText)
-                        .font(.system(size: 10, weight: .semibold, design: .monospaced))
-                        .foregroundStyle(CodexSwitchDesign.warningText(for: colorScheme))
-                        .lineLimit(1)
-                        .fixedSize(horizontal: true, vertical: false)
-                }
+                ))
+                .font(.system(size: 10, weight: .semibold, design: .monospaced))
+                .foregroundStyle(CodexSwitchDesign.warningText(for: colorScheme))
+                .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: false)
             }
         }
     }
@@ -463,11 +461,10 @@ private struct AccountOptionButtonStyle: ButtonStyle {
     }
 }
 
-// 마지막 사용량 갱신 시각을 메뉴에 맞는 짧은 상대 시간으로 바꾼다.
-enum AccountUsageFreshness {
-    static func text(for account: CodexAccount, now: Date = Date()) -> String? {
-        guard let lastUsageAt = account.lastUsageAt else { return nil }
-        let age = max(0, now.timeIntervalSince1970 - TimeInterval(lastUsageAt))
+// 마지막 새로고침 성공 시각을 기존 메뉴 문구 그대로 상대 시간으로 바꾼다.
+enum AccountRefreshStatus {
+    static func text(since refreshedAt: Date, now: Date = Date()) -> String {
+        let age = max(0, now.timeIntervalSince(refreshedAt))
 
         switch age {
         case ..<60:

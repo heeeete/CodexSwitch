@@ -222,7 +222,7 @@ final class MenuLayoutTests: XCTestCase {
             AccountRegistry.self,
             from: Data(Self.accountRegistryJSON.utf8)
         )
-        let accounts = registry.accounts.map(AccountListItem.init(account:))
+        let accounts = registry.accounts.map { AccountListItem(account: $0) }
         let hostingView = NSHostingView(
             rootView: AccountPickerPopover(
                 action: .removeAccount,
@@ -262,7 +262,7 @@ final class MenuLayoutTests: XCTestCase {
             AccountRegistry.self,
             from: Data(Self.accountRegistryJSON.utf8)
         )
-        let accounts = registry.accounts.map(AccountListItem.init(account:))
+        let accounts = registry.accounts.map { AccountListItem(account: $0) }
         let switchView = NSHostingView(
             rootView: AccountPickerPopover(
                 action: .switchAccount,
@@ -325,7 +325,7 @@ final class MenuLayoutTests: XCTestCase {
         let hostingView = NSHostingView(
             rootView: AccountPickerPopover(
                 action: .removeAccount,
-                accounts: registry.accounts.map(AccountListItem.init(account:)),
+                accounts: registry.accounts.map { AccountListItem(account: $0) },
                 activeAccountKey: registry.activeAccountKey,
                 isDisabled: false,
                 selectAction: { _ in }
