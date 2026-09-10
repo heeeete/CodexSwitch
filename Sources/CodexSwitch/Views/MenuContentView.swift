@@ -8,6 +8,7 @@ struct MenuContentView: View {
     }
 
     @ObservedObject var store: AccountStore
+    @ObservedObject var updateStore: UpdateStore = UpdateStore()
     @Environment(\.colorScheme) private var colorScheme
     @State private var refreshIsHovered = false
     @State private var autoRefreshRowIsHovered = false
@@ -298,6 +299,13 @@ struct MenuContentView: View {
             }
             .padding(.horizontal, 6)
             .padding(.vertical, 5)
+
+            // 준비된 업데이트는 버전 번호 없이 하단에서 재시작을 안내한다.
+            if updateStore.status != .idle {
+                sectionDivider
+                    .padding(.horizontal, 12)
+                UpdateNoticeView(updateStore: updateStore, isBusy: store.isBusy)
+            }
         }
     }
 

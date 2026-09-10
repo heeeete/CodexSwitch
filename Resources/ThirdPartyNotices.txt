@@ -28,6 +28,10 @@ SOFTWARE.
 
 CodexSwitch is an independent project and is not affiliated with OpenAI.
 
+CodexSwitch also includes Sparkle 2.9.6 for application updates:
+https://github.com/sparkle-project/Sparkle
+The complete Sparkle and bundled component licenses are in Sparkle-LICENSE.txt.
+
 codex-auth can optionally call private ChatGPT endpoints for usage and workspace
 metadata. CodexSwitch keeps this mode off by default and asks for explicit user
 consent before each user enables it. The bundled implementation may place an

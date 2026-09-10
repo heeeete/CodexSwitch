@@ -49,6 +49,7 @@ GitHub 저장소의 **Settings → Secrets and variables → Actions**에서 다
 | `APP_STORE_CONNECT_API_KEY_P8_BASE64` | Team API Key `.p8`의 Base64 문자열 |
 | `APP_STORE_CONNECT_API_KEY_ID` | App Store Connect Key ID |
 | `APP_STORE_CONNECT_API_KEY_ISSUER_ID` | App Store Connect Issuer ID |
+| `SPARKLE_PRIVATE_KEY` | 앱의 `SUPublicEDKey`에 대응하는 Sparkle EdDSA 개인 키 |
 
 인증서와 API Key 파일은 저장소에 올리지 않습니다. 워크플로는 실행할 때마다
 임시 키체인을 만들고 작업이 끝나면 삭제합니다.
@@ -100,8 +101,8 @@ Git tag는 `v0.1.0`, Release 제목은 `CodexSwitch 0.1.0` 형식을 사용합�
 - 같은 버전의 게시된 Release가 없는지
 
 검사가 끝나면 임시 키체인에 인증서를 가져오고 테스트, 서명, 공증, stapling,
-Gatekeeper 검사를 수행합니다. 공개용 ZIP과 SHA-256 파일을 초안 Release에
-올린 뒤 다시 내려받아 체크섬을 확인하고 게시합니다. 로컬에서 태그를 만들거나
+Gatekeeper 검사를 수행합니다. 공개용 ZIP, SHA-256 파일, 서명된 `appcast.xml`을 초안 Release에
+올린 뒤 다시 내려받아 체크섬과 피드 서명을 확인하고 게시합니다. 로컬에서 태그를 만들거나
 공증 명령을 따로 실행할 필요는 없습니다.
 
 > [!NOTE]
@@ -150,16 +151,17 @@ NOTARY_PROFILE="CodexSwitch-notary" \
 4. 앱 구조·아이콘·아키텍처·독립 실행 조건 검증
 5. 공증용 ZIP 업로드 및 결과 대기
 6. 공증 티켓 stapling과 Gatekeeper 검사
-7. 배포 ZIP과 SHA-256 파일 생성
+7. 배포 ZIP, SHA-256 파일과 서명된 `appcast.xml` 생성
 
 모든 검증이 끝나기 전에는 기존 `dist` 산출물을 교체하지 않습니다.
 
 ## 산출물 검증
 
-예를 들어 버전이 `0.1.0`이라면 다음 두 파일을 배포합니다.
+예를 들어 버전이 `0.3.0`이라면 다음 세 파일을 배포합니다.
 
-- `dist/CodexSwitch-0.1.0-macos-arm64.zip`
-- `dist/CodexSwitch-0.1.0-macos-arm64.zip.sha256`
+- `dist/CodexSwitch-0.3.0-macos-arm64.zip`
+- `dist/CodexSwitch-0.3.0-macos-arm64.zip.sha256`
+- `dist/appcast.xml`
 
 체크섬과 압축 파일을 다시 확인합니다.
 
@@ -186,19 +188,42 @@ VERIFY_CHATGPT_HOST=1 ./scripts/verify-release.sh dist/CodexSwitch.app
 
 ## 로컬 산출물을 GitHub Release에 게시
 
-공증된 ZIP과 해당 SHA-256 파일만 Release asset으로 올립니다. `CodexSwitch.app`
+공증된 ZIP, 해당 SHA-256 파일과 `appcast.xml`을 Release asset으로 올립니다. `CodexSwitch.app`
 폴더, 공증 제출용 임시 ZIP, ad-hoc ZIP은 올리지 않습니다.
 
 ```bash
-VERSION=0.1.0
+VERSION=0.3.0
 gh release create "v$VERSION" \
   "dist/CodexSwitch-$VERSION-macos-arm64.zip" \
   "dist/CodexSwitch-$VERSION-macos-arm64.zip.sha256" \
+  "dist/appcast.xml" \
   --target main \
   --title "CodexSwitch $VERSION"
 ```
 
 게시한 뒤 GitHub에서 asset을 다시 내려받아 함께 제공한 SHA-256 파일로 검증합니다.
+
+## 앱 내부 업데이트
+
+앱은 최신 Release의 `appcast.xml`을 매시간 확인합니다. 다음 버전을 배포할 때도
+반드시 ZIP·체크섬·피드 세 파일을 함께 올리고 최신 Release로 지정하세요.
+피드와 ZIP은 EdDSA 서명으로 검증되며, 파일을 수정했다면 다시 서명해야 합니다.
+`0.3.0` 이전 앱은 이 기능이 없어 최초 한 번은 수동으로 교체해야 합니다.
+
+로컬 Sparkle 개인 키는 로그인 키체인의 `CodexSwitch` 계정에 저장되어 있습니다.
+공개 키만 `Resources/Info.plist`에 포함되며, 공개 키와 대응하는 개인 키를 유지해야
+이미 설치된 앱이 다음 업데이트를 신뢰할 수 있습니다. 새 키로 임의 교체하지 마세요.
+개인 키는 저장소에 저장하지 않습니다. Actions 배포를 설정할 때만 키를 안전하게
+`SPARKLE_PRIVATE_KEY` Secret으로 등록하세요. 로컬 배포는 키체인을 직접 사용합니다.
+
+실제 다운로드부터 앱 교체·재실행까지는 다음 명령으로 시험합니다. 운영 코드의
+업데이트 모듈을 별도 식별자의 임시 앱으로 빌드하므로 설치된 앱과 계정은 변경하지 않습니다.
+
+```bash
+CODE_SIGN_IDENTITY="Developer ID Application: NAME (TEAM_ID)" ./scripts/test-update.sh
+```
+
+테스트용 다음 버전은 loopback 서버에서만 제공하며 GitHub에 게시하지 않습니다.
 
 ## 문제 해결
 

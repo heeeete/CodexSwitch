@@ -2,6 +2,13 @@
 
 CodexSwitch에는 다음 오픈소스 소프트웨어가 포함되어 있습니다.
 
+## Sparkle
+
+- 원본 프로젝트: [sparkle-project/Sparkle](https://github.com/sparkle-project/Sparkle)
+- 포함 버전: `2.9.6`
+- 용도: 앱 업데이트 확인, 서명 검증, 설치 및 재시작
+- 라이선스: MIT 및 포함 구성요소별 라이선스. 전체 고지는 배포 앱의 `Contents/Resources/Sparkle-LICENSE.txt`에 포함됩니다.
+
 ## codex-auth
 
 - 원본 프로젝트: [Loongphy/codex-auth](https://github.com/Loongphy/codex-auth)

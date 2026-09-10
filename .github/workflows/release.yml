@@ -125,6 +125,7 @@ jobs:
                 | select(
                     . != ("CodexSwitch-" + $version + "-macos-arm64.zip")
                     and . != ("CodexSwitch-" + $version + "-macos-arm64.zip.sha256")
+                    and . != "appcast.xml"
                   )
               ' <<<"$release_json")"
               if [[ -n "$unexpected_assets" ]]; then
@@ -216,6 +217,18 @@ jobs:
           } >> "$GITHUB_ENV"
           rm -f "$certificate_path" "$api_key_path"
 
+      # Sparkle 개인 키는 로그에 노출하지 않고 임시 파일로만 전달한다.
+      - name: Prepare update signing key
+        shell: bash
+        env:
+          SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+          test -n "$SPARKLE_PRIVATE_KEY"
+          umask 077
+          printf '%s' "$SPARKLE_PRIVATE_KEY" > "$RUNNER_TEMP/codexswitch-sparkle-key"
+          echo "SPARKLE_ED_KEY_FILE=$RUNNER_TEMP/codexswitch-sparkle-key" >> "$GITHUB_ENV"
+
       # 로컬과 같은 스크립트로 테스트부터 서명·공증·staple까지 다시 수행한다.
       - name: Build, sign, and notarize
         shell: bash
@@ -245,7 +258,7 @@ jobs:
           xcrun stapler validate "$verify_root/CodexSwitch.app"
           spctl --assess --type execute --verbose=4 "$verify_root/CodexSwitch.app"
 
-      # 초안에 두 파일만 올리고 원격에서 다시 내려받아 검증한 뒤 공개한다.
+      # 초안에 ZIP·체크섬·서명된 업데이트 피드를 올리고 원격 검증 후 공개한다.
       - name: Publish GitHub Release
         shell: bash
         env:
@@ -271,7 +284,7 @@ jobs:
                   --generate-notes
           fi
 
-          gh release upload "$RELEASE_TAG" "$archive" "$checksum" --clobber
+          gh release upload "$RELEASE_TAG" "$archive" "$checksum" dist/appcast.xml --clobber
 
           uploaded_assets="$(
               gh release view "$RELEASE_TAG" \
@@ -279,19 +292,24 @@ jobs:
                   --jq '.assets | map(.name) | sort | join("\n")'
           )"
           expected_assets="$(
-              printf '%s\n%s' \
+              printf '%s\n%s\n%s' \
                   "CodexSwitch-$RELEASE_VERSION-macos-arm64.zip" \
-                  "CodexSwitch-$RELEASE_VERSION-macos-arm64.zip.sha256"
+                  "CodexSwitch-$RELEASE_VERSION-macos-arm64.zip.sha256" \
+                  "appcast.xml"
           )"
           if [[ "$uploaded_assets" != "$expected_assets" ]]; then
-              echo "::error::초안 Release에는 공개용 ZIP과 체크섬만 있어야 합니다."
+              echo "::error::초안 Release에는 공개용 ZIP·체크섬·업데이트 피드만 있어야 합니다."
               exit 1
           fi
 
           remote_root="$(mktemp -d "$RUNNER_TEMP/codexswitch-remote-release.XXXXXX")"
           gh release download "$RELEASE_TAG" \
               --pattern "CodexSwitch-$RELEASE_VERSION-macos-arm64.zip*" \
+              --pattern "appcast.xml" \
               --dir "$remote_root"
+          cmp dist/appcast.xml "$remote_root/appcast.xml"
+          .build/artifacts/sparkle/Sparkle/bin/sign_update --verify \
+              --ed-key-file "$SPARKLE_ED_KEY_FILE" "$remote_root/appcast.xml"
           (
               cd "$remote_root"
               shasum -a 256 -c "CodexSwitch-$RELEASE_VERSION-macos-arm64.zip.sha256"
@@ -310,4 +328,5 @@ jobs:
               2>/dev/null || true
           rm -f \
               "$RUNNER_TEMP/CodexSwitch-DeveloperIDApplication.p12" \
-              "$RUNNER_TEMP/CodexSwitch-NotaryKey.p8"
+              "$RUNNER_TEMP/CodexSwitch-NotaryKey.p8" \
+              "$RUNNER_TEMP/codexswitch-sparkle-key"

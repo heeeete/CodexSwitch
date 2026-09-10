@@ -9,6 +9,7 @@ APP_EXECUTABLE="$APP_BUNDLE/Contents/MacOS/CodexSwitch"
 HELPER_EXECUTABLE="$APP_BUNDLE/Contents/Helpers/codex-auth"
 INFO_PLIST="$APP_BUNDLE/Contents/Info.plist"
 ICON_FILE="$APP_BUNDLE/Contents/Resources/CodexSwitch.icns"
+SPARKLE_FRAMEWORK="$APP_BUNDLE/Contents/Frameworks/Sparkle.framework"
 EXPECTED_ARCH="${CODEXSWITCH_ARCH:-$(uname -m)}"
 
 test -d "$APP_BUNDLE"
@@ -17,6 +18,9 @@ test -x "$HELPER_EXECUTABLE"
 test -s "$ICON_FILE"
 test -f "$APP_BUNDLE/Contents/Resources/ThirdPartyNotices.txt"
 test -f "$APP_BUNDLE/Contents/Resources/codex-auth-LICENSE.txt"
+test -f "$APP_BUNDLE/Contents/Resources/Sparkle-LICENSE.txt"
+test -x "$SPARKLE_FRAMEWORK/Versions/B/Autoupdate"
+test -x "$SPARKLE_FRAMEWORK/Versions/B/Updater.app/Contents/MacOS/Updater"
 
 # 배포 메타데이터가 앱 식별자와 최소 시스템 요구사항을 유지하는지 확인한다.
 test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$INFO_PLIST")" = "com.bluepin.CodexSwitch"
@@ -24,6 +28,12 @@ test "$(/usr/libexec/PlistBuddy -c 'Print :LSMinimumSystemVersion' "$INFO_PLIST"
 test "$(/usr/libexec/PlistBuddy -c 'Print :LSUIElement' "$INFO_PLIST")" = "true"
 test "$(/usr/libexec/PlistBuddy -c 'Print :LSApplicationCategoryType' "$INFO_PLIST")" = "public.app-category.developer-tools"
 test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIconFile' "$INFO_PLIST")" = "CodexSwitch"
+
+# 공개 피드와 서명 검증 설정이 빠진 앱은 배포하지 않는다.
+test "$(/usr/libexec/PlistBuddy -c 'Print :SUFeedURL' "$INFO_PLIST")" = "https://github.com/heeeete/CodexSwitch/releases/latest/download/appcast.xml"
+test -n "$(/usr/libexec/PlistBuddy -c 'Print :SUPublicEDKey' "$INFO_PLIST")"
+test "$(/usr/libexec/PlistBuddy -c 'Print :SURequireSignedFeed' "$INFO_PLIST")" = "true"
+test "$(/usr/libexec/PlistBuddy -c 'Print :SUVerifyUpdateBeforeExtraction' "$INFO_PLIST")" = "true"
 
 # icns가 디코딩되고 모든 표준·Retina 슬롯을 정확한 픽셀 크기로 포함하는지 확인한다.
 VERIFY_HOME="$(mktemp -d /private/tmp/codexswitch-verify.XXXXXX)"
@@ -53,6 +63,7 @@ EOF
 # 앱과 helper가 같은 대상 아키텍처이며 고정 버전을 실행하는지 확인한다.
 lipo "$APP_EXECUTABLE" -verify_arch "$EXPECTED_ARCH"
 lipo "$HELPER_EXECUTABLE" -verify_arch "$EXPECTED_ARCH"
+lipo "$SPARKLE_FRAMEWORK/Sparkle" -verify_arch "$EXPECTED_ARCH"
 test "$($HELPER_EXECUTABLE --version)" = "codex-auth 0.2.10"
 
 # 호스트 ChatGPT 검증은 선택 사항이며 앱 산출물 자체의 합격 조건과 분리한다.
@@ -89,9 +100,10 @@ env -i \
 "$PROJECT_ROOT/scripts/test-clean-install.sh" "$APP_BUNDLE"
 
 # macOS 기본 awk만 사용해 외부 라이브러리 의존성과 코드 서명 봉인을 검사한다.
-if otool -L "$APP_EXECUTABLE" "$HELPER_EXECUTABLE" | awk '
+if otool -L "$APP_EXECUTABLE" "$HELPER_EXECUTABLE" "$SPARKLE_FRAMEWORK/Sparkle" | awk '
     /^[^[:space:]]/ { next }
     /\/System\/Library\/|\/usr\/lib\// { next }
+    /@rpath\/Sparkle.framework\/Versions\/B\/Sparkle / { next }
     /[^[:space:]]/ { unexpected = 1 }
     END { exit unexpected ? 0 : 1 }
 '; then

@@ -10,10 +10,18 @@ let package = Package(
     products: [
         .executable(name: "CodexSwitch", targets: ["CodexSwitch"])
     ],
+    dependencies: [
+        // 업데이트 설치와 검증을 담당하는 프레임워크 버전을 고정한다.
+        .package(url: "https://github.com/sparkle-project/Sparkle", exact: "2.9.6")
+    ],
     targets: [
         .executableTarget(
             name: "CodexSwitch",
-            path: "Sources/CodexSwitch"
+            dependencies: ["Sparkle"],
+            path: "Sources/CodexSwitch",
+            linkerSettings: [
+                .unsafeFlags(["-Xlinker", "-rpath", "-Xlinker", "@executable_path/../Frameworks"])
+            ]
         ),
         .testTarget(
             name: "CodexSwitchTests",
@@ -22,4 +30,3 @@ let package = Package(
         )
     ]
 )
-

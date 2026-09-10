@@ -104,9 +104,26 @@ fi
     shasum -a 256 "$FINAL_BASENAME" > "$FINAL_BASENAME.sha256"
 )
 
+# 공개 업데이트 ZIP과 안내 피드를 같은 Sparkle 키로 서명해 다음 앱 업데이트에 사용한다.
+if [[ "$SIGNING_IDENTITY" != "-" ]]; then
+    APPCAST_ARGUMENTS=(--account CodexSwitch --maximum-deltas 0
+        --download-url-prefix "https://github.com/heeeete/CodexSwitch/releases/download/v$VERSION/"
+        --link "https://github.com/heeeete/CodexSwitch/releases/tag/v$VERSION"
+        -o "$STAGING_ROOT/appcast.xml")
+    if [[ -n "${SPARKLE_ED_KEY_FILE:-}" ]]; then
+        APPCAST_ARGUMENTS+=(--ed-key-file "$SPARKLE_ED_KEY_FILE")
+    fi
+    "$PROJECT_ROOT/.build/artifacts/sparkle/Sparkle/bin/generate_appcast" \
+        "${APPCAST_ARGUMENTS[@]}" "$STAGING_ROOT"
+    test -s "$STAGING_ROOT/appcast.xml"
+fi
+
 # 검증된 앱과 이번 실행에서 선택한 ZIP·체크섬만 백업 후 같은 파일시스템에서 교체한다.
 BACKUP_ROOT="$STAGING_ROOT/.previous"
 PUBLISH_NAMES=("CodexSwitch.app" "$FINAL_BASENAME" "$FINAL_BASENAME.sha256")
+if [[ "$SIGNING_IDENTITY" != "-" ]]; then
+    PUBLISH_NAMES+=("appcast.xml")
+fi
 mkdir -p "$BACKUP_ROOT"
 for name in "${PUBLISH_NAMES[@]}"; do
     target="$OUTPUT_ROOT/$name"
@@ -125,6 +142,9 @@ done
 mv "$STAGING_ROOT/CodexSwitch.app" "$OUTPUT_ROOT/CodexSwitch.app"
 mv "$FINAL_ZIP" "$OUTPUT_ROOT/$FINAL_BASENAME"
 mv "$FINAL_ZIP.sha256" "$OUTPUT_ROOT/$FINAL_BASENAME.sha256"
+if [[ "$SIGNING_IDENTITY" != "-" ]]; then
+    mv "$STAGING_ROOT/appcast.xml" "$OUTPUT_ROOT/appcast.xml"
+fi
 PUBLISH_COMPLETE=1
 
 echo "$OUTPUT_ROOT/$FINAL_BASENAME"

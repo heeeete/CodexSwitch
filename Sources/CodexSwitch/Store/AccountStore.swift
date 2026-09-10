@@ -21,6 +21,7 @@ final class AccountStore: ObservableObject {
     @Published private(set) var isLoading = false
     @Published private(set) var isRefreshing = false
     @Published private(set) var isConnecting = false
+    @Published private(set) var isRestartingForUpdate = false
     @Published private(set) var switchingAccountKey: String?
     @Published private(set) var removingAccountKey: String?
     @Published var notice: Notice?
@@ -116,11 +117,23 @@ final class AccountStore: ObservableObject {
     }
 
     var isBusy: Bool {
-        isLoading
+        isRestartingForUpdate
+            || isLoading
             || isRefreshing
             || isConnecting
             || switchingAccountKey != nil
             || removingAccountKey != nil
+    }
+
+    // 재시작을 요청한 뒤에는 자동 갱신을 포함한 새 계정 작업이 시작되지 않게 한다.
+    func prepareForUpdateRestart() -> Bool {
+        guard !isBusy else { return false }
+        isRestartingForUpdate = true
+        return true
+    }
+
+    func cancelUpdateRestart() {
+        isRestartingForUpdate = false
     }
 
     func loadLocalAccounts() async {

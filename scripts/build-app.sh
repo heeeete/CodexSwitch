@@ -10,6 +10,8 @@ APP_CONTENTS="$APP_BUNDLE/Contents"
 APP_MACOS="$APP_CONTENTS/MacOS"
 APP_HELPERS="$APP_CONTENTS/Helpers"
 APP_RESOURCES="$APP_CONTENTS/Resources"
+APP_FRAMEWORKS="$APP_CONTENTS/Frameworks"
+SPARKLE_ROOT="$PROJECT_ROOT/.build/artifacts/sparkle/Sparkle"
 ICONSET_PATH="$PROJECT_ROOT/.build/CodexSwitch.iconset"
 TARGET_ARCH="${CODEXSWITCH_ARCH:-$(uname -m)}"
 SIGNING_IDENTITY="${CODE_SIGN_IDENTITY:--}"
@@ -50,7 +52,12 @@ fi
 swift build -c release --arch "$TARGET_ARCH" --package-path "$PROJECT_ROOT"
 BUILD_PRODUCTS="$(swift build -c release --arch "$TARGET_ARCH" --package-path "$PROJECT_ROOT" --show-bin-path)"
 rm -rf "$APP_BUNDLE" "$ICONSET_PATH"
-mkdir -p "$APP_MACOS" "$APP_HELPERS" "$APP_RESOURCES"
+mkdir -p "$APP_MACOS" "$APP_HELPERS" "$APP_RESOURCES" "$APP_FRAMEWORKS"
+
+# SwiftPM이 검증한 Sparkle 프레임워크와 설치 도구를 앱 안에 함께 배포한다.
+ditto "$SPARKLE_ROOT/Sparkle.xcframework/macos-arm64_x86_64/Sparkle.framework" \
+    "$APP_FRAMEWORKS/Sparkle.framework"
+cp "$SPARKLE_ROOT/LICENSE" "$APP_RESOURCES/Sparkle-LICENSE.txt"
 
 cp "$BUILD_PRODUCTS/CodexSwitch" "$APP_MACOS/CodexSwitch"
 cp "$PROJECT_ROOT/Resources/Info.plist" "$APP_CONTENTS/Info.plist"
@@ -96,6 +103,17 @@ else
     TIMESTAMP_ARGUMENT="--timestamp"
 fi
 
+# Sparkle의 실행 파일과 중첩 번들을 안쪽부터 같은 배포 인증서로 서명한다.
+SPARKLE_FRAMEWORK="$APP_FRAMEWORKS/Sparkle.framework"
+for component in \
+    "$SPARKLE_FRAMEWORK/Versions/B/XPCServices/Downloader.xpc" \
+    "$SPARKLE_FRAMEWORK/Versions/B/XPCServices/Installer.xpc" \
+    "$SPARKLE_FRAMEWORK/Versions/B/Autoupdate" \
+    "$SPARKLE_FRAMEWORK/Versions/B/Updater.app" \
+    "$SPARKLE_FRAMEWORK"; do
+    codesign --force --options runtime "$TIMESTAMP_ARGUMENT" \
+        --sign "$SIGNING_IDENTITY" "$component"
+done
 codesign --force --options runtime "$TIMESTAMP_ARGUMENT" \
     --sign "$SIGNING_IDENTITY" "$APP_HELPERS/codex-auth"
 codesign --force --options runtime "$TIMESTAMP_ARGUMENT" \
