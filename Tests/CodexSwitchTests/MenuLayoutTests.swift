@@ -40,7 +40,8 @@ final class MenuLayoutTests: XCTestCase {
         let fittingSize = hostingView.fittingSize
         XCTAssertEqual(fittingSize.width, 372, accuracy: 1)
         XCTAssertGreaterThan(fittingSize.height, 280)
-        XCTAssertLessThan(fittingSize.height, 550)
+        // 자동 새로고침 행과 구분선에 필요한 35pt를 기존 높이 상한에 더한다.
+        XCTAssertLessThan(fittingSize.height, 585)
 
         // 요청된 경우 같은 렌더를 PNG로 저장해 사람 눈으로도 확인할 수 있게 한다.
         guard let snapshotPath = ProcessInfo.processInfo.environment["CODEXSWITCH_SNAPSHOT_PATH"],

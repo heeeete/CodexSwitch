@@ -24,9 +24,15 @@ final class AccountStore: ObservableObject {
     @Published private(set) var switchingAccountKey: String?
     @Published private(set) var removingAccountKey: String?
     @Published var notice: Notice?
+    @Published var autoRefreshEnabled: Bool {
+        didSet {
+            userDefaults.set(autoRefreshEnabled, forKey: Self.autoRefreshPreferenceKey)
+            updateAutoRefreshTask()
+        }
+    }
     @Published var restartChatGPTAfterSwitch: Bool {
         didSet {
-            UserDefaults.standard.set(
+            userDefaults.set(
                 restartChatGPTAfterSwitch,
                 forKey: Self.restartPreferenceKey
             )
@@ -34,34 +40,75 @@ final class AccountStore: ObservableObject {
     }
     @Published private(set) var directAPIRefreshEnabled: Bool {
         didSet {
-            UserDefaults.standard.set(
+            userDefaults.set(
                 directAPIRefreshEnabled,
                 forKey: Self.directAPIRefreshPreferenceKey
             )
         }
     }
 
+    private static let autoRefreshPreferenceKey = "autoRefreshEnabled"
     private static let restartPreferenceKey = "restartCodexAfterSwitch"
     private static let directAPIRefreshPreferenceKey = "directAPIRefreshEnabled"
     private let authService: CodexAuthService
+    private let userDefaults: UserDefaults
+    private let autoRefreshInterval: Duration
     private let appController = ChatGPTAppController()
     private var localLoadTask: Task<Void, Never>?
     private var didCompleteInitialLoad = false
     private var connectionTask: Task<Void, Never>?
     private var refreshTask: Task<Void, Never>?
+    private var autoRefreshTask: Task<Void, Never>?
 
-    init(authService: CodexAuthService = CodexAuthService()) {
+    init(
+        authService: CodexAuthService = CodexAuthService(),
+        userDefaults: UserDefaults = .standard,
+        autoRefreshInterval: Duration = .seconds(60)
+    ) {
         self.authService = authService
-        if UserDefaults.standard.object(forKey: Self.restartPreferenceKey) == nil {
+        self.userDefaults = userDefaults
+        self.autoRefreshInterval = autoRefreshInterval
+        autoRefreshEnabled = userDefaults.bool(forKey: Self.autoRefreshPreferenceKey)
+        if userDefaults.object(forKey: Self.restartPreferenceKey) == nil {
             restartChatGPTAfterSwitch = true
         } else {
-            restartChatGPTAfterSwitch = UserDefaults.standard.bool(
+            restartChatGPTAfterSwitch = userDefaults.bool(
                 forKey: Self.restartPreferenceKey
             )
         }
-        directAPIRefreshEnabled = UserDefaults.standard.bool(
+        directAPIRefreshEnabled = userDefaults.bool(
             forKey: Self.directAPIRefreshPreferenceKey
         )
+        updateAutoRefreshTask()
+    }
+
+    deinit {
+        autoRefreshTask?.cancel()
+    }
+
+    // 앱이 소유한 반복 작업으로 메뉴가 닫혀도 갱신하며, 끄거나 다시 켜면 이전 예약을 취소한다.
+    private func updateAutoRefreshTask() {
+        autoRefreshTask?.cancel()
+        autoRefreshTask = nil
+        guard autoRefreshEnabled else { return }
+
+        autoRefreshTask = Task { [weak self, autoRefreshInterval] in
+            guard !Task.isCancelled else { return }
+            // 저장된 설정으로 앱을 시작해도 메뉴를 열기 전에 계정을 준비한다.
+            await self?.loadLocalAccounts()
+            while !Task.isCancelled {
+                do {
+                    try await Task.sleep(for: autoRefreshInterval)
+                } catch {
+                    return
+                }
+                guard !Task.isCancelled else { return }
+                guard let self else { return }
+                guard !accounts.isEmpty else { continue }
+                // 수동 새로 고침과 같은 조회 설정·busy 보호를 사용해 작업이 겹치지 않게 한다.
+                refresh()
+            }
+        }
     }
 
     var activeAccount: AccountListItem? {

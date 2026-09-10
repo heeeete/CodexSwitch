@@ -10,6 +10,7 @@ struct MenuContentView: View {
     @ObservedObject var store: AccountStore
     @Environment(\.colorScheme) private var colorScheme
     @State private var refreshIsHovered = false
+    @State private var autoRefreshRowIsHovered = false
     @State private var restartRowIsHovered = false
     @State private var directAPIRowIsHovered = false
     @State private var presentedAccountPopover: AccountPopoverKind?
@@ -172,6 +173,38 @@ struct MenuContentView: View {
     private var footer: some View {
         VStack(spacing: 0) {
             VStack(spacing: 0) {
+                // 자동 갱신 주기를 기존 계정 변경 설정 바로 위에서 켜고 끈다.
+                HStack(spacing: 8) {
+                    Text("자동 새로고침")
+                        .font(.system(size: 11, weight: .medium))
+
+                    Text("1분마다")
+                        .font(.system(size: 9, weight: .medium, design: .monospaced))
+                        .foregroundStyle(CodexSwitchDesign.smallText(for: colorScheme))
+
+                    Spacer()
+
+                    Toggle("자동 새로고침", isOn: $store.autoRefreshEnabled)
+                        .labelsHidden()
+                        .toggleStyle(.switch)
+                        .controlSize(.mini)
+                }
+                .frame(minHeight: 34)
+                .padding(.horizontal, 9)
+                .background(
+                    autoRefreshRowIsHovered
+                        ? CodexSwitchDesign.hoverBackground(for: colorScheme)
+                        : Color.clear,
+                    in: RoundedRectangle(cornerRadius: 7, style: .continuous)
+                )
+                .onHover { hovering in
+                    autoRefreshRowIsHovered = hovering
+                }
+                .help("메뉴를 닫아도 1분마다 현재 조회 설정으로 사용량을 새로 고칩니다.")
+
+                sectionDivider
+                    .padding(.leading, 10)
+
                 HStack(spacing: 8) {
                     Text("변경 후 ChatGPT 열기")
                         .font(.system(size: 11, weight: .medium))
