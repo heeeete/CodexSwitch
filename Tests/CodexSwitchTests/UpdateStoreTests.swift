@@ -78,6 +78,50 @@ final class UpdateStoreTests: XCTestCase {
         XCTAssertEqual(store.status, .idle)
     }
 
+    // 수동 확인 결과는 설정에 남기고 메뉴에는 불필요한 최신 버전 안내를 만들지 않는다.
+    func testManualCheckShowsProgressAndLatestVersionWithoutMenuNotice() {
+        let store = UpdateStore()
+        let driver = UpdateUserDriver(store: store)
+        driver.showUserInitiatedUpdateCheck(cancellation: {})
+        XCTAssertEqual(store.checkMessage, "업데이트를 확인하고 있어요.")
+        XCTAssertEqual(store.status, .idle)
+        driver.showUpdateNotFoundWithError(NSError(domain: SUSparkleErrorDomain, code: 1001)) {}
+        driver.dismissUpdateInstallation()
+        XCTAssertEqual(store.checkMessage, "최신 버전을 사용하고 있어요.")
+        XCTAssertEqual(store.status, .idle)
+        driver.showUserInitiatedUpdateCheck(cancellation: {})
+        driver.showUpdaterError(NSError(domain: NSURLErrorDomain, code: -1009)) {}
+        XCTAssertEqual(store.checkMessage, "")
+        XCTAssertEqual(store.status, .failed)
+    }
+
+    // 기본 설정과 재시작 안내가 밝은·어두운 네이티브 폼 안에 들어가는지 확인한다.
+    func testSettingsLayoutInBothAppearances() throws {
+        for scheme in [ColorScheme.light, .dark] {
+            let updates = UpdateStore()
+            let driver = UpdateUserDriver(store: updates)
+            for ready in [false, true] {
+                if ready { driver.showReady { _ in } }
+                let view = NSHostingView(rootView:
+                    SettingsView(updateStore: updates, accountStore: AccountStore())
+                        .environment(\.colorScheme, scheme)
+                )
+                let size = view.fittingSize
+                XCTAssertEqual(size.width, 460, accuracy: 1)
+                XCTAssertGreaterThan(size.height, 160)
+                XCTAssertLessThan(size.height, 450)
+                if let root = ProcessInfo.processInfo.environment["CODEXSWITCH_SETTINGS_SNAPSHOT_ROOT"] {
+                    view.frame = NSRect(origin: .zero, size: size)
+                    view.layoutSubtreeIfNeeded()
+                    let bitmap = try XCTUnwrap(view.bitmapImageRepForCachingDisplay(in: view.bounds))
+                    view.cacheDisplay(in: view.bounds, to: bitmap)
+                    let data = try XCTUnwrap(bitmap.representation(using: .png, properties: [:]))
+                    try data.write(to: URL(fileURLWithPath: "\(root)-\(scheme)-\(ready).png"))
+                }
+            }
+        }
+    }
+
     // 재시작을 요청한 뒤에는 새 계정 작업이 시작되지 않고 실패 시 정상 복구된다.
     func testRestartLockPreventsAccountMutations() {
         let accounts = AccountStore()

@@ -41,7 +41,7 @@ swiftc -parse-as-library -swift-version 6 -target "$(uname -m)-apple-macosx14.0"
 ditto "$SPARKLE_ROOT/Sparkle.xcframework/macos-arm64_x86_64/Sparkle.framework" \
     "$INSTALLED_APP/Contents/Frameworks/Sparkle.framework"
 python3 - "$PROJECT_ROOT" "$TEST_ROOT" "$TEST_IDENTIFIER" "$TEST_PORT" <<'PY'
-import pathlib, plistlib, sys
+import os, pathlib, plistlib, sys
 project, root = map(pathlib.Path, sys.argv[1:3])
 info = plistlib.loads((project / "Resources/Info.plist").read_bytes())
 info.update(CFBundleIdentifier=sys.argv[3], CFBundleName="UpdateFixture",
@@ -49,7 +49,8 @@ info.update(CFBundleIdentifier=sys.argv[3], CFBundleName="UpdateFixture",
             CFBundleVersion="3", CFBundleShortVersionString="0.3.0",
             SUFeedURL=f"http://127.0.0.1:{sys.argv[4]}/appcast.xml",
             NSAppTransportSecurity={"NSAllowsLocalNetworking": True},
-            UpdateTestResultDirectory=str(root))
+            UpdateTestResultDirectory=str(root),
+            UpdateTestManualCheck=os.environ.get("UPDATE_TEST_MANUAL") == "1")
 (root / "installed/UpdateFixture.app/Contents/Info.plist").write_bytes(plistlib.dumps(info))
 PY
 ditto "$INSTALLED_APP" "$NEXT_APP"

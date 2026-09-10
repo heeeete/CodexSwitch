@@ -4,21 +4,24 @@ import XCTest
 
 @MainActor
 final class AutoRefreshTests: XCTestCase {
-    // 기본값은 꺼짐이며 켜고 끈 선택 모두 새 Store에 복원된다.
-    func testPreferenceDefaultsOffAndPersists() async throws {
+    // 최초 실행부터 자동 갱신하고 사용자가 끈 선택은 재실행해도 유지한다.
+    func testPreferenceDefaultsOnAndPersists() async throws {
         let fixture = try Fixture()
         defer { fixture.cleanUp() }
         let store = fixture.makeStore()
-        XCTAssertFalse(store.autoRefreshEnabled)
-        try await Task.sleep(for: .milliseconds(350))
-        XCTAssertEqual(fixture.invocations.count, 0)
-
-        store.autoRefreshEnabled = true
-        let restored = fixture.makeStore()
-        XCTAssertTrue(restored.autoRefreshEnabled)
-        restored.autoRefreshEnabled = false
+        XCTAssertTrue(store.autoRefreshEnabled)
+        try await waitUntil { fixture.invocations.count >= 2 && !store.isBusy }
         store.autoRefreshEnabled = false
-        XCTAssertFalse(fixture.makeStore().autoRefreshEnabled)
+        let restored = fixture.makeStore()
+        XCTAssertFalse(restored.autoRefreshEnabled)
+        let stoppedCount = fixture.invocations.count
+        try await Task.sleep(for: .milliseconds(350))
+        XCTAssertEqual(fixture.invocations.count, stoppedCount)
+        restored.autoRefreshEnabled = true
+        let enabledAgain = fixture.makeStore()
+        XCTAssertTrue(enabledAgain.autoRefreshEnabled)
+        enabledAgain.autoRefreshEnabled = false
+        restored.autoRefreshEnabled = false
     }
 
     // 메뉴 View 없이 시작해도 계정을 읽고 반복 조회 결과가 화면 상태에 반영된다.

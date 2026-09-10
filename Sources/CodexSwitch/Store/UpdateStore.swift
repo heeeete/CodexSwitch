@@ -10,6 +10,10 @@ final class UpdateStore: NSObject, ObservableObject, SPUUpdaterDelegate {
     }
 
     @Published private(set) var status: Status = .idle
+    @Published private(set) var automaticallyChecksForUpdates = true
+    @Published private(set) var canCheckForUpdates = false
+    @Published private(set) var checkMessage = ""
+    private var observations = Set<AnyCancellable>()
     private var pendingAction: (() -> Void)?
     private var updater: SPUUpdater?
     private lazy var userDriver = UpdateUserDriver(store: self)
@@ -55,11 +59,30 @@ final class UpdateStore: NSObject, ObservableObject, SPUUpdaterDelegate {
             userDriver: userDriver, delegate: self
         )
         self.updater = updater
+        // 자동 확인 설정은 Sparkle가 저장하고, 예약 상태 변경도 같은 값을 관찰한다.
+        updater.publisher(for: \.automaticallyChecksForUpdates)
+            .sink { [weak self] in self?.automaticallyChecksForUpdates = $0 }
+            .store(in: &observations)
+        updater.publisher(for: \.canCheckForUpdates)
+            .sink { [weak self] in self?.canCheckForUpdates = $0 }
+            .store(in: &observations)
         do {
             try updater.start()
         } catch {
             showFailure(error)
         }
+    }
+
+    // 설정을 꺼도 사용자가 누르는 수동 확인은 계속 사용할 수 있다.
+    func setAutomaticallyChecksForUpdates(_ enabled: Bool) {
+        updater?.automaticallyChecksForUpdates = enabled
+    }
+
+    func checkForUpdates() {
+        guard let updater, updater.canCheckForUpdates,
+              status == .idle || status == .failed else { return }
+        status = .idle
+        updater.checkForUpdates()
     }
 
     // 계정 작업이 끝난 상태에서만 설치를 시작하고, 반복 클릭은 한 번만 처리한다.
@@ -97,11 +120,13 @@ final class UpdateStore: NSObject, ObservableObject, SPUUpdaterDelegate {
     }
 
     fileprivate func offerUpdate(ready: Bool, action: @escaping () -> Void) {
+        checkMessage = ""
         pendingAction = action
         status = ready ? .ready : .available
     }
 
     fileprivate func showPreparing() {
+        checkMessage = ""
         pendingAction = nil
         status = .preparing
     }
@@ -113,8 +138,19 @@ final class UpdateStore: NSObject, ObservableObject, SPUUpdaterDelegate {
     fileprivate func showFailure(_ error: Error) {
         NSLog("CodexSwitch update failed: %@", error.localizedDescription)
         pendingAction = nil
+        checkMessage = ""
         restartCancelled()
         status = .failed
+    }
+
+    // 수동 조회의 진행·최신 버전 안내는 설정 창에서만 표시한다.
+    fileprivate func showChecking() {
+        checkMessage = "업데이트를 확인하고 있어요."
+    }
+
+    fileprivate func showUpToDate() {
+        dismiss()
+        checkMessage = "최신 버전을 사용하고 있어요."
     }
 
     fileprivate func dismiss() {
@@ -160,7 +196,7 @@ final class UpdateUserDriver: NSObject, SPUUserDriver {
     }
 
     func showUserInitiatedUpdateCheck(cancellation: @escaping () -> Void) {
-        store?.showPreparing()
+        store?.showChecking()
     }
 
     func showDownloadInitiated(cancellation: @escaping () -> Void) {
@@ -182,7 +218,7 @@ final class UpdateUserDriver: NSObject, SPUUserDriver {
     }
 
     func showUpdateNotFoundWithError(_ error: Error, acknowledgement: @escaping () -> Void) {
-        store?.dismiss()
+        store?.showUpToDate()
         acknowledgement()
     }
 

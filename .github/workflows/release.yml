@@ -124,7 +124,6 @@ jobs:
                 .assets[].name
                 | select(
                     . != ("CodexSwitch-" + $version + "-macos-arm64.zip")
-                    and . != ("CodexSwitch-" + $version + "-macos-arm64.zip.sha256")
                     and . != "appcast.xml"
                   )
               ' <<<"$release_json")"
@@ -258,7 +257,7 @@ jobs:
           xcrun stapler validate "$verify_root/CodexSwitch.app"
           spctl --assess --type execute --verbose=4 "$verify_root/CodexSwitch.app"
 
-      # 초안에 ZIP·체크섬·서명된 업데이트 피드를 올리고 원격 검증 후 공개한다.
+      # 초안에는 사용자용 ZIP과 앱이 읽는 업데이트 피드만 올리고 원격 검증 후 공개한다.
       - name: Publish GitHub Release
         shell: bash
         env:
@@ -269,7 +268,6 @@ jobs:
           set -euo pipefail
 
           archive="dist/CodexSwitch-$RELEASE_VERSION-macos-arm64.zip"
-          checksum="$archive.sha256"
 
           if release_json="$(gh release view "$RELEASE_TAG" --json isDraft 2>/dev/null)"; then
               if [[ "$(jq -r '.isDraft' <<<"$release_json")" != "true" ]]; then
@@ -281,10 +279,11 @@ jobs:
                   --draft \
                   --target "$GITHUB_SHA" \
                   --title "CodexSwitch $RELEASE_VERSION" \
+                  --notes "**일반 사용자는 ZIP 파일만 다운로드하세요.**" \
                   --generate-notes
           fi
 
-          gh release upload "$RELEASE_TAG" "$archive" "$checksum" dist/appcast.xml --clobber
+          gh release upload "$RELEASE_TAG" "$archive" dist/appcast.xml --clobber
 
           uploaded_assets="$(
               gh release view "$RELEASE_TAG" \
@@ -292,27 +291,26 @@ jobs:
                   --jq '.assets | map(.name) | sort | join("\n")'
           )"
           expected_assets="$(
-              printf '%s\n%s\n%s' \
+              printf '%s\n%s' \
                   "CodexSwitch-$RELEASE_VERSION-macos-arm64.zip" \
-                  "CodexSwitch-$RELEASE_VERSION-macos-arm64.zip.sha256" \
                   "appcast.xml"
           )"
           if [[ "$uploaded_assets" != "$expected_assets" ]]; then
-              echo "::error::초안 Release에는 공개용 ZIP·체크섬·업데이트 피드만 있어야 합니다."
+              echo "::error::초안 Release에는 사용자용 ZIP과 업데이트 피드만 있어야 합니다."
               exit 1
           fi
 
           remote_root="$(mktemp -d "$RUNNER_TEMP/codexswitch-remote-release.XXXXXX")"
           gh release download "$RELEASE_TAG" \
-              --pattern "CodexSwitch-$RELEASE_VERSION-macos-arm64.zip*" \
+              --pattern "CodexSwitch-$RELEASE_VERSION-macos-arm64.zip" \
               --pattern "appcast.xml" \
               --dir "$remote_root"
+          cmp "$archive" "$remote_root/$(basename "$archive")"
           cmp dist/appcast.xml "$remote_root/appcast.xml"
           .build/artifacts/sparkle/Sparkle/bin/sign_update --verify \
               --ed-key-file "$SPARKLE_ED_KEY_FILE" "$remote_root/appcast.xml"
           (
               cd "$remote_root"
-              shasum -a 256 -c "CodexSwitch-$RELEASE_VERSION-macos-arm64.zip.sha256"
               unzip -tq "CodexSwitch-$RELEASE_VERSION-macos-arm64.zip"
           )
 

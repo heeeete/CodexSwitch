@@ -6,6 +6,7 @@ import Combine
 final class UpdateFixtureDelegate: NSObject, NSApplicationDelegate {
     private let updates = UpdateStore()
     private var observation: AnyCancellable?
+    private var checkObservation: AnyCancellable?
     private var didRequestRestart = false
 
     private var resultDirectory: URL {
@@ -18,13 +19,28 @@ final class UpdateFixtureDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         if Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String == "4" {
-            record("passed", "새 앱으로 교체하고 재실행했습니다.")
-            NSApp.terminate(nil)
+            // 교체 후에도 자동 확인 선택이 유지되고 수동 확인이 최신 버전을 안내해야 한다.
+            updates.start()
+            let manual = Bundle.main.object(forInfoDictionaryKey: "UpdateTestManualCheck") as? Bool == true
+            guard updates.automaticallyChecksForUpdates == !manual else {
+                record("failed", "재시작 후 자동 확인 설정이 유지되지 않았습니다.")
+                NSApp.terminate(nil)
+                return
+            }
+            checkObservation = updates.$checkMessage.sink { [weak self] message in
+                if message == "최신 버전을 사용하고 있어요." {
+                    self?.record("passed", "앱 교체·재실행·설정 유지·최신 버전 수동 확인 성공")
+                    NSApp.terminate(nil)
+                }
+            }
+            updates.checkForUpdates()
             return
         }
         observation = updates.$status.sink { [weak self] status in
             guard let self else { return }
-            if status == .ready, !didRequestRestart {
+            if status == .available {
+                Task { self.updates.performAction() }
+            } else if status == .ready, !didRequestRestart {
                 didRequestRestart = true
                 // 준비 상태에서 기다려도 앱이 스스로 재시작하지 않고 버튼 동작 뒤에만 교체되어야 한다.
                 Task { [weak self] in
@@ -41,6 +57,15 @@ final class UpdateFixtureDelegate: NSObject, NSApplicationDelegate {
             }
         }
         updates.start()
+        if Bundle.main.object(forInfoDictionaryKey: "UpdateTestManualCheck") as? Bool == true {
+            updates.setAutomaticallyChecksForUpdates(false)
+            guard !updates.automaticallyChecksForUpdates else {
+                record("failed", "자동 확인 끄기가 적용되지 않았습니다.")
+                NSApp.terminate(nil)
+                return
+            }
+            updates.checkForUpdates()
+        }
         Task { [weak self] in
             try? await Task.sleep(for: .seconds(100))
             self?.record("failed", "업데이트 대기 시간 초과")

@@ -10,6 +10,7 @@ struct MenuContentView: View {
     @ObservedObject var store: AccountStore
     @ObservedObject var updateStore: UpdateStore = UpdateStore()
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.openSettings) private var openSettings
     @State private var refreshIsHovered = false
     @State private var autoRefreshRowIsHovered = false
     @State private var restartRowIsHovered = false
@@ -295,6 +296,11 @@ struct MenuContentView: View {
                 sectionDivider
                     .padding(.leading, 10)
 
+                settingsRow
+
+                sectionDivider
+                    .padding(.leading, 10)
+
                 quitRow
             }
             .padding(.horizontal, 6)
@@ -406,6 +412,18 @@ struct MenuContentView: View {
             }
         }
         .help("계정 목록을 열어 제거할 계정 선택")
+    }
+
+    // 메뉴바 전용 앱에서도 설정 창을 앞으로 가져오고 같은 창을 다시 사용한다.
+    private var settingsRow: some View {
+        MenuCommandRow(isDisabled: store.isRestartingForUpdate, action: {
+            NSApp.activate(ignoringOtherApps: true)
+            openSettings()
+        }) {
+            MenuCommandLabel(title: "설정…", systemImage: "gearshape", trailingText: "⌘,")
+        }
+        .keyboardShortcut(",", modifiers: .command)
+        .help("CodexSwitch 설정 열기")
     }
 
     private var quitRow: some View {

@@ -69,7 +69,9 @@ final class AccountStore: ObservableObject {
         self.authService = authService
         self.userDefaults = userDefaults
         self.autoRefreshInterval = autoRefreshInterval
-        autoRefreshEnabled = userDefaults.bool(forKey: Self.autoRefreshPreferenceKey)
+        // 저장된 선택이 없을 때만 자동 갱신을 기본으로 켜고, 사용자가 끈 값은 유지한다.
+        autoRefreshEnabled = userDefaults.object(forKey: Self.autoRefreshPreferenceKey) == nil
+            || userDefaults.bool(forKey: Self.autoRefreshPreferenceKey)
         if userDefaults.object(forKey: Self.restartPreferenceKey) == nil {
             restartChatGPTAfterSwitch = true
         } else {

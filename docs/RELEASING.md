@@ -101,8 +101,8 @@ Git tag는 `v0.1.0`, Release 제목은 `CodexSwitch 0.1.0` 형식을 사용합�
 - 같은 버전의 게시된 Release가 없는지
 
 검사가 끝나면 임시 키체인에 인증서를 가져오고 테스트, 서명, 공증, stapling,
-Gatekeeper 검사를 수행합니다. 공개용 ZIP, SHA-256 파일, 서명된 `appcast.xml`을 초안 Release에
-올린 뒤 다시 내려받아 체크섬과 피드 서명을 확인하고 게시합니다. 로컬에서 태그를 만들거나
+Gatekeeper 검사를 수행합니다. 사용자용 ZIP과 서명된 `appcast.xml`을 초안 Release에
+올린 뒤 다시 내려받아 원본 일치 여부와 피드 서명을 확인하고 게시합니다. 로컬에서 태그를 만들거나
 공증 명령을 따로 실행할 필요는 없습니다.
 
 > [!NOTE]
@@ -157,13 +157,12 @@ NOTARY_PROFILE="CodexSwitch-notary" \
 
 ## 산출물 검증
 
-예를 들어 버전이 `0.3.0`이라면 다음 세 파일을 배포합니다.
+예를 들어 버전이 `0.3.0`이라면 Release에는 다음 두 파일을 배포합니다.
 
 - `dist/CodexSwitch-0.3.0-macos-arm64.zip`
-- `dist/CodexSwitch-0.3.0-macos-arm64.zip.sha256`
 - `dist/appcast.xml`
 
-체크섬과 압축 파일을 다시 확인합니다.
+스크립트가 로컬 검증용으로 생성한 체크섬과 압축 파일을 다시 확인합니다.
 
 ```bash
 cd dist
@@ -188,25 +187,28 @@ VERIFY_CHATGPT_HOST=1 ./scripts/verify-release.sh dist/CodexSwitch.app
 
 ## 로컬 산출물을 GitHub Release에 게시
 
-공증된 ZIP, 해당 SHA-256 파일과 `appcast.xml`을 Release asset으로 올립니다. `CodexSwitch.app`
-폴더, 공증 제출용 임시 ZIP, ad-hoc ZIP은 올리지 않습니다.
+공증된 ZIP과 `appcast.xml`만 Release asset으로 올립니다. `CodexSwitch.app` 폴더,
+SHA-256 파일, 공증 제출용 임시 ZIP, ad-hoc ZIP은 올리지 않습니다. Release 설명은
+`**일반 사용자는 ZIP 파일만 다운로드하세요.**`로 시작합니다.
 
 ```bash
 VERSION=0.3.0
 gh release create "v$VERSION" \
   "dist/CodexSwitch-$VERSION-macos-arm64.zip" \
-  "dist/CodexSwitch-$VERSION-macos-arm64.zip.sha256" \
   "dist/appcast.xml" \
   --target main \
-  --title "CodexSwitch $VERSION"
+  --title "CodexSwitch $VERSION" \
+  --notes "**일반 사용자는 ZIP 파일만 다운로드하세요.**"
 ```
 
-게시한 뒤 GitHub에서 asset을 다시 내려받아 함께 제공한 SHA-256 파일로 검증합니다.
+게시한 뒤 GitHub에서 두 asset을 다시 내려받아 로컬 원본 및 서명과 비교합니다.
 
 ## 앱 내부 업데이트
 
-앱은 최신 Release의 `appcast.xml`을 매시간 확인합니다. 다음 버전을 배포할 때도
-반드시 ZIP·체크섬·피드 세 파일을 함께 올리고 최신 Release로 지정하세요.
+앱은 자동 확인이 켜져 있으면 최신 Release의 `appcast.xml`을 매시간 확인합니다.
+`0.3.1`부터 메뉴의 **설정…**에서 자동 확인을 켜고 끄거나 현재 버전을 확인할 수
+있습니다. **지금 확인**은 자동 확인을 꺼도 사용할 수 있습니다. 다음 버전을 배포할 때도
+반드시 ZIP과 피드 두 파일을 함께 올리고 최신 Release로 지정하세요.
 피드와 ZIP은 EdDSA 서명으로 검증되며, 파일을 수정했다면 다시 서명해야 합니다.
 `0.3.0` 이전 앱은 이 기능이 없어 최초 한 번은 수동으로 교체해야 합니다.
 
@@ -221,8 +223,11 @@ gh release create "v$VERSION" \
 
 ```bash
 CODE_SIGN_IDENTITY="Developer ID Application: NAME (TEAM_ID)" ./scripts/test-update.sh
+UPDATE_TEST_MANUAL=1 CODE_SIGN_IDENTITY="Developer ID Application: NAME (TEAM_ID)" ./scripts/test-update.sh
 ```
 
+두 번째 명령은 자동 확인을 끈 상태에서 수동 업데이트와 재시작 후 설정 유지를
+확인합니다. 두 모드 모두 교체 후 수동 조회가 최신 버전 안내를 표시하는지도 검사합니다.
 테스트용 다음 버전은 loopback 서버에서만 제공하며 GitHub에 게시하지 않습니다.
 
 ## 문제 해결

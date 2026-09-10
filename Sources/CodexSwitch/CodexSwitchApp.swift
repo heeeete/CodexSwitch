@@ -26,5 +26,11 @@ struct CodexSwitchApp: App {
                 .accessibilityLabel("CodexSwitch")
         }
         .menuBarExtraStyle(.window)
+
+        // 메뉴의 설정 행에서 여는 macOS 기본 설정 창이다.
+        Settings {
+            SettingsView(updateStore: updateStore, accountStore: accountStore)
+        }
+        .windowResizability(.contentSize)
     }
 }
