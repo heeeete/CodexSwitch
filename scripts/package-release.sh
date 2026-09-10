@@ -65,6 +65,7 @@ trap cleanup EXIT
 
 # 테스트 후 동일 스크립트로 앱을 조립하고 검증한다.
 swift test --package-path "$PROJECT_ROOT"
+"$PROJECT_ROOT/scripts/test-startup.sh"
 "$PROJECT_ROOT/scripts/build-app.sh" "$STAGING_ROOT"
 "$PROJECT_ROOT/scripts/verify-release.sh" "$STAGING_ROOT/CodexSwitch.app"
 
