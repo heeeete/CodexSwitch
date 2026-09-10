@@ -30,11 +30,11 @@
 ## 설치
 
 1. [최신 Release](https://github.com/heeeete/CodexSwitch/releases/latest)에서 Apple Silicon용 ZIP을 내려받습니다.
-2. 압축을 풀고 `CodexSwitch.app`을 **응용 프로그램** 폴더로 옮깁니다.
-3. 앱을 실행한 뒤 메뉴바의 CodexSwitch 아이콘을 누릅니다.
+2. 압축을 풀고 `CodexSwitch.app`을 실행합니다. 처음 실행하면 **응용 프로그램** 폴더에 자동으로 설치한 뒤 다시 열립니다.
+3. 메뉴바의 CodexSwitch 아이콘을 누릅니다. 기존 CodexSwitch가 실행 중이면 종료한 뒤 설치 안내에서 **다시 시도**를 누르세요.
 
 > [!NOTE]
-> 배포 앱은 Apple Developer ID로 서명하고 Apple 공증을 마쳤습니다. CodexSwitch는 Dock 아이콘이나 일반 창이 나타나지 않는 메뉴바 앱입니다.
+> 배포 앱은 Apple Developer ID로 서명하고 Apple 공증을 마쳤습니다. 설치가 끝나면 메뉴바에서 실행됩니다. `/Applications`에 쓸 수 없으면 개인 `~/Applications` 폴더를 사용합니다.
 
 `0.3.0` 이전 버전을 사용 중이면 한 번 직접 내려받아 교체해 주세요. `0.3.0`부터는
 새 업데이트를 매시간 확인하고 다운로드·검증이 끝나면 **“새로운 업데이트가 있어요!
