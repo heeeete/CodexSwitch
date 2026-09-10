@@ -1,5 +1,6 @@
 import Foundation
 import Security
+import Darwin
 
 // 다운로드 위치의 앱을 검증한 뒤 Applications에 설치하며 기존 앱은 재실행 성공까지 보관한다.
 struct AppInstaller: Sendable {
@@ -115,14 +116,16 @@ struct AppInstaller: Sendable {
     // 서명 검증을 마친 설치본만 다운로드 격리를 해제해 재실행 시 임시 경로로 돌아가지 않게 한다.
     // 다운로드 원본·공증 티켓은 보존하고, 번들 밖을 가리킬 수 있는 심볼릭 링크는 따라가지 않는다.
     private func prepareForLaunch(at applicationURL: URL) throws {
-        var values = URLResourceValues()
-        values.quarantineProperties = nil
-        var application = applicationURL
-        try application.setResourceValues(values)
-        let files = FileManager.default.enumerator(at: applicationURL, includingPropertiesForKeys: [.isSymbolicLinkKey])
-        while var file = files?.nextObject() as? URL {
-            if try file.resourceValues(forKeys: [.isSymbolicLinkKey]).isSymbolicLink == true { continue }
-            try file.setResourceValues(values)
+        let files = FileManager.default.enumerator(at: applicationURL, includingPropertiesForKeys: nil)
+        let urls = [applicationURL] + (files?.allObjects as? [URL] ?? [])
+        for file in urls {
+            // macOS 15의 Foundation은 없는 격리 속성 삭제에도 오류를 반환하므로 파일 API를 사용한다.
+            let result = file.withUnsafeFileSystemRepresentation {
+                removexattr($0!, "com.apple.quarantine", XATTR_NOFOLLOW)
+            }
+            if result != 0 && errno != ENOATTR {
+                throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO)
+            }
         }
     }
 

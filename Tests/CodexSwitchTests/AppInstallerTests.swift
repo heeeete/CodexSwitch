@@ -50,9 +50,8 @@ final class AppInstallerTests: XCTestCase {
         }
         let result = try fixture.installer.install()
         for url in [result.applicationURL, result.applicationURL.appendingPathComponent("Contents/marker")] {
-            // macOS는 설치 주체 메타데이터를 남길 수 있으므로 다운로드 격리 정보만 확인한다.
             let properties = try url.resourceValues(forKeys: [.quarantinePropertiesKey]).quarantineProperties
-            XCTAssertNil(properties?["LSQuarantineType"])
+            XCTAssertNil(properties)
         }
         for url in [fixture.source, sourceFile, externalFile] {
             let properties = try url.resourceValues(forKeys: [.quarantinePropertiesKey]).quarantineProperties
