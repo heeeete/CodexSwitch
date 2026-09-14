@@ -430,6 +430,42 @@ actor CodexAuthService {
         }
     }
 
+    // 계정별 스냅샷을 읽어 토큰을 프로세스 인자나 디스크 캐시에 남기지 않고 조회한다.
+    func fetchResetCredits(accountKey: String) async throws -> [ResetCredit] {
+        let request = try await resetCreditRequest(accountKey: accountKey)
+        let session = URLSession(configuration: .ephemeral)
+        defer { session.invalidateAndCancel() }
+        return try await ResetCreditClient.fetch(request: request, session: session)
+    }
+
+    // 인증 파일 읽기만 계정 변경과 직렬화하고 네트워크 대기 중에는 잠금을 풀어 둔다.
+    func resetCreditRequest(accountKey: String) async throws -> URLRequest {
+        await acquireMutation()
+        defer { releaseMutation() }
+        try Task.checkCancellation()
+        let registry = try loadRegistry()
+        guard registry.accounts.contains(where: { $0.accountKey == accountKey }) else {
+            throw CodexAuthError.accountNotFound
+        }
+        let snapshotURL = registryURL.deletingLastPathComponent()
+            .appendingPathComponent(Self.snapshotFileName(accountKey: accountKey))
+        let data = try Data(contentsOf: snapshotURL)
+        guard let root = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let tokens = root["tokens"] as? [String: Any],
+              let token = tokens["access_token"] as? String, !token.isEmpty,
+              let accountID = tokens["account_id"] as? String, !accountID.isEmpty,
+              accountKey.hasSuffix("::\(accountID)") else {
+            throw CodexAuthError.invalidLoginCredential
+        }
+        var request = URLRequest(url: URL(string: "https://chatgpt.com/backend-api/wham/rate-limit-reset-credits")!)
+        request.httpMethod = "GET"
+        request.timeoutInterval = 15
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.setValue(accountID, forHTTPHeaderField: "ChatGPT-Account-Id")
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        return request
+    }
+
     // 로그인은 격리된 CODEX_HOME에서 끝낸 뒤 새 계정만 실제 목록에 가져온다.
     @discardableResult
     func connectAccount() async throws -> String {

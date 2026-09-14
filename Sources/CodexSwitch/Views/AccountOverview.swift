@@ -7,6 +7,7 @@ struct AccountOverview: View {
     let switchingAccountKey: String?
     let removingAccountKey: String?
     let isDisabled: Bool
+    var resetCreditState: ResetCreditState = .loading
 
     var body: some View {
         if let currentAccount {
@@ -24,6 +25,10 @@ struct AccountOverview: View {
                 ActiveAccountDetail(item: currentAccount)
                 .padding(.horizontal, 16)
                 .padding(.vertical, 6)
+
+                ResetCreditSection(state: resetCreditState)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
             }
         }
     }
@@ -32,6 +37,62 @@ struct AccountOverview: View {
     private var currentAccount: AccountListItem? {
         guard let activeAccountKey else { return nil }
         return accounts.first { $0.account.accountKey == activeAccountKey }
+    }
+}
+
+// 현재 계정의 쿠폰은 기기 현지 시각으로 표시하고 만료가 가까운 순서로 나열한다.
+struct ResetCreditSection: View {
+    let state: ResetCreditState
+    @Environment(\.colorScheme) private var colorScheme
+
+    var body: some View {
+        TimelineView(.periodic(from: .now, by: 60)) { context in
+            VStack(alignment: .leading, spacing: 5) {
+                Text("초기화 쿠폰")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(CodexSwitchDesign.smallText(for: colorScheme))
+                switch state {
+                case .loading:
+                    statusText("쿠폰 조회 중…")
+                case .failed:
+                    statusText("쿠폰을 조회하지 못했어요. 새로고침해 주세요.")
+                case let .loaded(credits):
+                    let available = ResetCredit.available(in: credits, at: context.date)
+                    if available.isEmpty {
+                        statusText("사용 가능한 쿠폰 없음")
+                    } else {
+                        // 쿠폰이 많아져도 메뉴가 화면 밖으로 늘어나지 않게 목록만 스크롤한다.
+                        ScrollView {
+                            VStack(spacing: 0) {
+                                ForEach(Array(available.enumerated()), id: \.element.id) { index, credit in
+                                    HStack {
+                                        Text("쿠폰 \(index + 1)")
+                                        Spacer(minLength: 8)
+                                        if let expiresAt = credit.expiresAt {
+                                            Text("\(expiresAt.formatted(.dateTime.year().month(.twoDigits).day(.twoDigits).hour().minute())) 만료")
+                                        } else {
+                                            Text("만료일 없음")
+                                        }
+                                    }
+                                    .font(.system(size: 11, weight: .medium))
+                                    .foregroundStyle(CodexSwitchDesign.secondaryText(for: colorScheme))
+                                    .frame(height: 24)
+                                    .accessibilityElement(children: .combine)
+                                }
+                            }
+                        }
+                        .frame(height: CGFloat(min(available.count, 4)) * 24)
+                    }
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+
+    private func statusText(_ text: String) -> some View {
+        Text(text)
+            .font(.system(size: 11))
+            .foregroundStyle(CodexSwitchDesign.secondaryText(for: colorScheme))
     }
 }
 

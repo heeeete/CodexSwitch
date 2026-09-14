@@ -132,7 +132,8 @@ struct MenuContentView: View {
                     activeAccountKey: store.activeAccountKey,
                     switchingAccountKey: store.switchingAccountKey,
                     removingAccountKey: store.removingAccountKey,
-                    isDisabled: store.isBusy
+                    isDisabled: store.isBusy,
+                    resetCreditState: store.resetCreditState
                 )
             }
         }

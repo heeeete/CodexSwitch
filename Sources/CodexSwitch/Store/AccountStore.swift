@@ -18,6 +18,7 @@ final class AccountStore: ObservableObject {
 
     @Published private(set) var accounts: [AccountListItem] = []
     @Published private(set) var activeAccountKey: String?
+    @Published private(set) var resetCreditState: ResetCreditState = .loading
     @Published private(set) var isLoading = false
     @Published private(set) var isRefreshing = false
     @Published private(set) var isConnecting = false
@@ -60,15 +61,21 @@ final class AccountStore: ObservableObject {
     private var connectionTask: Task<Void, Never>?
     private var refreshTask: Task<Void, Never>?
     private var autoRefreshTask: Task<Void, Never>?
+    private var resetCreditTask: Task<Void, Never>?
+    private let resetCreditLoader: @Sendable (String) async throws -> [ResetCredit]
 
     init(
         authService: CodexAuthService = CodexAuthService(),
         userDefaults: UserDefaults = .standard,
-        autoRefreshInterval: Duration = .seconds(60)
+        autoRefreshInterval: Duration = .seconds(60),
+        resetCreditLoader: (@Sendable (String) async throws -> [ResetCredit])? = nil
     ) {
         self.authService = authService
         self.userDefaults = userDefaults
         self.autoRefreshInterval = autoRefreshInterval
+        self.resetCreditLoader = resetCreditLoader ?? { key in
+            try await authService.fetchResetCredits(accountKey: key)
+        }
         // 저장된 선택이 없을 때만 자동 갱신을 기본으로 켜고, 사용자가 끈 값은 유지한다.
         autoRefreshEnabled = userDefaults.object(forKey: Self.autoRefreshPreferenceKey) == nil
             || userDefaults.bool(forKey: Self.autoRefreshPreferenceKey)
@@ -87,6 +94,7 @@ final class AccountStore: ObservableObject {
 
     deinit {
         autoRefreshTask?.cancel()
+        resetCreditTask?.cancel()
     }
 
     // 앱이 소유한 반복 작업으로 메뉴가 닫혀도 갱신하며, 끄거나 다시 켜면 이전 예약을 취소한다.
@@ -188,6 +196,8 @@ final class AccountStore: ObservableObject {
                 notice = Notice(style: .warning, message: "새로 고침을 취소했습니다.")
             } catch {
                 notice = Notice(style: .error, message: error.localizedDescription)
+                // 사용량 helper 조회가 실패해도 별도 쿠폰 API 갱신은 시도한다.
+                refreshResetCredits()
             }
         }
     }
@@ -381,6 +391,26 @@ final class AccountStore: ObservableObject {
         let refreshedAt = Date()
         accounts = registry.accounts.map { AccountListItem(account: $0, refreshedAt: refreshedAt) }
         didCompleteInitialLoad = true
+        refreshResetCredits()
+    }
+
+    // 사용량 모드와 독립적으로 조회하며 이전 요청이 늦게 끝나도 새 계정 화면을 덮지 않는다.
+    private func refreshResetCredits() {
+        resetCreditTask?.cancel()
+        resetCreditTask = nil
+        resetCreditState = .loading
+        guard let key = activeAccountKey, activeAccount != nil else { return }
+        let loader = resetCreditLoader
+        resetCreditTask = Task { [weak self] in
+            do {
+                let credits = try await loader(key)
+                guard !Task.isCancelled, let self, activeAccountKey == key else { return }
+                resetCreditState = .loaded(credits)
+            } catch {
+                guard !Task.isCancelled, let self, activeAccountKey == key else { return }
+                resetCreditState = .failed
+            }
+        }
     }
 
     #if DEBUG
