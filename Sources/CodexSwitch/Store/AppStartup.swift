@@ -4,7 +4,6 @@ import SwiftUI
 // 설치가 끝난 실행본에서만 계정 조회와 Sparkle를 시작한다.
 @MainActor
 final class AppStartup: NSObject, ObservableObject, NSApplicationDelegate, NSWindowDelegate {
-    @Published private(set) var isReady = false
     @Published private(set) var installationError: String?
     @Published private(set) var isInstalling = false
     lazy var accountStore = AccountStore()
@@ -14,6 +13,7 @@ final class AppStartup: NSObject, ObservableObject, NSApplicationDelegate, NSWin
         restartCancelled: { [weak self] in self?.accountStore.cancelUpdateRestart() }
     )
     private var installationWindow: NSWindow?
+    private var statusMenu: StatusMenuController?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         #if DEBUG
@@ -70,7 +70,11 @@ final class AppStartup: NSObject, ObservableObject, NSApplicationDelegate, NSWin
     private func startRuntime() {
         _ = accountStore
         _ = updateStore
-        isReady = true
+        statusMenu = StatusMenuController(store: accountStore, updateStore: updateStore)
+    }
+
+    func applicationWillTerminate(_ notification: Notification) {
+        statusMenu?.stop()
     }
 
     func showInstallationError(_ message: String) {

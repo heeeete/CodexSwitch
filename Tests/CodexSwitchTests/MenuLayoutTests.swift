@@ -5,6 +5,55 @@ import XCTest
 
 @MainActor
 final class MenuLayoutTests: XCTestCase {
+    // 선택한 큰 숫자 시안을 주간 전용·5시간 포함·잔여량 부족 상태로 실제 렌더링한다.
+    func testRedesignedUsageAndCouponLayouts() async throws {
+        let suite = "CodexSwitch-UsageLayout-\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defaults.set(false, forKey: "autoRefreshEnabled")
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let now = Date()
+        let credits = [504_060, 1_634_460, 1_728_060].enumerated().map { index, seconds in
+            ResetCredit(id: String(index), status: "available", resetType: "codex_rate_limits",
+                        expiresAt: now.addingTimeInterval(Double(seconds)))
+        }
+        for (name, dual, used, scheme) in [("weekly-dark", false, 15, ColorScheme.dark),
+                                           ("weekly-light", false, 15, .light),
+                                           ("dual-dark", true, 15, .dark),
+                                           ("low-dark", false, 92, .dark)] {
+            let weekly: [String: Any] = ["used_percent": used, "window_minutes": 10_080,
+                                         "resets_at": Int(now.timeIntervalSince1970) + 504_060]
+            let usage: [String: Any] = dual
+                ? ["primary": ["used_percent": 25, "window_minutes": 300,
+                                "resets_at": Int(now.timeIntervalSince1970) + 7_260], "secondary": weekly]
+                : ["primary": weekly]
+            let data = try JSONSerialization.data(withJSONObject: [
+                "schema_version": 3, "active_account_key": "preview",
+                "accounts": [["account_key": "preview", "email": "preview.account@example.com", "plan": "pro", "last_usage": usage],
+                             ["account_key": "other", "email": "other@example.com"],
+                             ["account_key": "third", "email": "third@example.com"]]
+            ])
+            let store = AccountStore(userDefaults: defaults, resetCreditLoader: { _ in credits })
+            store.applyPreviewRegistry(try JSONDecoder().decode(AccountRegistry.self, from: data))
+            for _ in 0..<100 where store.resetCreditState == .loading {
+                try await Task.sleep(for: .milliseconds(10))
+            }
+            XCTAssertEqual(store.resetCreditState, .loaded(credits))
+            let hosting = NSHostingView(rootView: MenuContentView(store: store)
+                .environment(\.colorScheme, scheme).environment(\.locale, Locale(identifier: "ko_KR")))
+            let size = hosting.fittingSize
+            XCTAssertEqual(size.width, 372, accuracy: 1)
+            XCTAssertLessThan(size.height, 760)
+            if let prefix = ProcessInfo.processInfo.environment["CODEXSWITCH_USAGE_SNAPSHOT_ROOT"] {
+                hosting.frame = NSRect(origin: .zero, size: size)
+                hosting.layoutSubtreeIfNeeded()
+                let bitmap = try XCTUnwrap(hosting.bitmapImageRepForCachingDisplay(in: hosting.bounds))
+                hosting.cacheDisplay(in: hosting.bounds, to: bitmap)
+                try XCTUnwrap(bitmap.representation(using: .png, properties: [:])).write(
+                    to: URL(fileURLWithPath: "\(prefix)-\(name).png"))
+            }
+        }
+    }
+
     // 시스템 Material이 밝은 모드와 어두운 모드에서 모두 같은 메뉴 구조를 유지한다.
     func testAccountMenuRendersInLightAndDarkAppearances() throws {
         let registry = try JSONDecoder().decode(
@@ -25,7 +74,8 @@ final class MenuLayoutTests: XCTestCase {
             )
             XCTAssertEqual(hostingView.fittingSize.width, 372, accuracy: 1)
             XCTAssertGreaterThan(hostingView.fittingSize.height, 280)
-            XCTAssertLessThan(hostingView.fittingSize.height, 600)
+            // 두 사용량 창의 큰 숫자와 초기화 시간을 포함한 메뉴 높이를 제한한다.
+            XCTAssertLessThan(hostingView.fittingSize.height, 720)
         }
     }
 
@@ -81,7 +131,8 @@ final class MenuLayoutTests: XCTestCase {
         let fittingSize = hostingView.fittingSize
         XCTAssertEqual(fittingSize.width, 372, accuracy: 1)
         XCTAssertGreaterThan(fittingSize.height, 280)
-        XCTAssertLessThan(fittingSize.height, 600)
+        // 두 사용량 창의 큰 숫자와 초기화 시간을 포함한 메뉴 높이를 제한한다.
+        XCTAssertLessThan(fittingSize.height, 720)
 
         guard let snapshotPath = ProcessInfo.processInfo.environment["CODEXSWITCH_ACCOUNTS_SNAPSHOT_PATH"],
               !snapshotPath.isEmpty else {
@@ -196,7 +247,8 @@ final class MenuLayoutTests: XCTestCase {
         let fittingSize = hostingView.fittingSize
         XCTAssertEqual(fittingSize.width, 372, accuracy: 1)
         XCTAssertGreaterThan(fittingSize.height, 340)
-        XCTAssertLessThan(fittingSize.height, 700)
+        // 첫 쿠폰 조회에도 세 줄을 확보하며, 화면보다 긴 내용은 NSMenu 호스트가 스크롤한다.
+        XCTAssertLessThan(fittingSize.height, 760)
 
         guard let snapshotPath = ProcessInfo.processInfo.environment["CODEXSWITCH_NOTICE_SNAPSHOT_PATH"],
               !snapshotPath.isEmpty else {

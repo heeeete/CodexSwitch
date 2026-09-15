@@ -4,7 +4,7 @@ set -euo pipefail
 
 # 만들어진 앱 번들의 구조, 버전, 실행 가능성, 서명을 한 번에 검증한다.
 PROJECT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-APP_BUNDLE="${1:-$PROJECT_ROOT/dist/CodexSwitch.app}"
+APP_BUNDLE="${1:-$PROJECT_ROOT/dist/local-test/CodexSwitch.app}"
 APP_EXECUTABLE="$APP_BUNDLE/Contents/MacOS/CodexSwitch"
 HELPER_EXECUTABLE="$APP_BUNDLE/Contents/Helpers/codex-auth"
 INFO_PLIST="$APP_BUNDLE/Contents/Info.plist"
@@ -111,5 +111,8 @@ if otool -L "$APP_EXECUTABLE" "$HELPER_EXECUTABLE" "$SPARKLE_FRAMEWORK/Sparkle" 
     exit 1
 fi
 codesign --verify --deep --strict --verbose=4 "$APP_BUNDLE"
+
+# 서명 봉인 검사만으로 놓치는 런타임 프레임워크 로딩 오류도 실제 실행으로 확인한다.
+test "$("$APP_EXECUTABLE" --verify-launch)" = "CodexSwitch launch verification passed"
 
 echo "Release verification passed: $APP_BUNDLE"

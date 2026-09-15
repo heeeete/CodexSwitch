@@ -97,20 +97,15 @@ final class AutoRefreshTests: XCTestCase {
         XCTAssertEqual(store.activeAccount?.refreshedAt, completedRefresh)
     }
 
-    // 자동 조회도 기존 API 선택을 따르고 설정을 바꾸면 다음 주기부터 로컬 조회를 사용한다.
-    func testAutomaticRefreshUsesCurrentAPISetting() async throws {
+    // 이전 버전에서 API 설정을 켜두었어도 이제는 항상 로컬 조회만 실행한다.
+    func testLegacyAPISettingDoesNotEnableRemoteRefresh() async throws {
         let fixture = try Fixture()
         defer { fixture.cleanUp() }
         fixture.defaults.set(true, forKey: "directAPIRefreshEnabled")
         let store = fixture.makeStore()
         defer { store.autoRefreshEnabled = false }
-        await store.loadLocalAccounts()
-        store.autoRefreshEnabled = true
-        try await waitUntil { fixture.invocations.contains("list --api") && !store.isBusy }
-        store.setDirectAPIRefreshEnabled(false)
-        let previousCount = fixture.invocations.count
-        try await waitUntil { fixture.invocations.count > previousCount && !store.isBusy }
-        XCTAssertEqual(fixture.invocations.last, "list --skip-api")
+        try await waitUntil { fixture.invocations.count >= 2 && !store.isBusy }
+        XCTAssertTrue(fixture.invocations.allSatisfy { $0 == "list --skip-api" })
     }
 
     // 끄면 이후 주기가 멈추며 빠르게 다시 켜도 예약이 중복되지 않는다.
@@ -266,6 +261,14 @@ final class AutoRefreshTests: XCTestCase {
             ]}
             """
             try Data(json.utf8).write(to: url, options: .atomic)
+            // 사용량은 registry 캐시가 아닌 일반 Codex 세션에서 읽는다.
+            let sessionsURL = rootURL.appendingPathComponent("sessions")
+            try FileManager.default.createDirectory(at: sessionsURL, withIntermediateDirectories: true)
+            let event = """
+            {"timestamp":"1970-01-01T00:01:40Z","type":"event_msg","payload":{"type":"token_count","rate_limits":{"limit_id":"codex","primary":{"used_percent":\(usedPercent),"window_minutes":300}}}}
+            """
+            try Data(event.utf8).write(to: sessionsURL.appendingPathComponent("rollout-test.jsonl"), options: .atomic)
+
         }
 
         func cleanUp() {

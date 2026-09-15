@@ -88,16 +88,6 @@ final class AccountStoreTests: XCTestCase {
             ofItemAtPath: helperURL.path
         )
 
-        let previousPreference = UserDefaults.standard.object(forKey: "directAPIRefreshEnabled")
-        defer {
-            if let previousPreference {
-                UserDefaults.standard.set(previousPreference, forKey: "directAPIRefreshEnabled")
-            } else {
-                UserDefaults.standard.removeObject(forKey: "directAPIRefreshEnabled")
-            }
-        }
-        UserDefaults.standard.set(false, forKey: "directAPIRefreshEnabled")
-
         let service = CodexAuthService(
             registryURL: rootURL.appendingPathComponent("accounts/registry.json"),
             environment: [

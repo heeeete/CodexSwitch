@@ -1,8 +1,10 @@
 import AppKit
 import SwiftUI
 
-// 실제 App·Scene·AppStartup을 실행하되 계정과 네트워크 작업만 테스트 대역으로 대체한다.
+// 실제 AppKit 진입점·AppStartup을 실행하되 계정과 네트워크 작업만 테스트 대역으로 대체한다.
 @MainActor final class AccountStore: ObservableObject {
+    let isRestartingForUpdate = false
+    let isBusy = false
     init() {
         Task {
             try? await Task.sleep(for: .seconds(2))
@@ -18,6 +20,10 @@ import SwiftUI
                 print("FAIL: startup completed without a menu bar item on screen")
                 exit(EXIT_FAILURE)
             }
+            guard !NSApp.windows.contains(where: { $0.title == "CodexSwitch 설정" && $0.isVisible }) else {
+                print("FAIL: startup unexpectedly opened a settings window")
+                exit(EXIT_FAILURE)
+            }
             print("PASS: startup displayed a menu bar item on screen")
             NSApp.terminate(nil)
         }
@@ -25,9 +31,11 @@ import SwiftUI
 
     func prepareForUpdateRestart() -> Bool { true }
     func cancelUpdateRestart() {}
+    func loadLocalAccounts() async {}
+    func quit() { NSApp.terminate(nil) }
 }
 
-// 테스트에서는 Sparkle나 실제 계정을 시작하지 않으며 Scene의 생성 경로를 유지한다.
+// 테스트에서는 Sparkle나 실제 계정을 시작하지 않으며 메뉴 생성 경로를 유지한다.
 @MainActor final class UpdateStore: ObservableObject {
     init(startAutomatically: Bool, prepareForRestart: @escaping () -> Bool, restartCancelled: @escaping () -> Void) {}
 }
@@ -35,6 +43,7 @@ import SwiftUI
 struct MenuContentView: View {
     let store: AccountStore
     let updateStore: UpdateStore
+    var showSettings: (() -> Void)? = nil
     var body: some View { Text("Startup test") }
 }
 

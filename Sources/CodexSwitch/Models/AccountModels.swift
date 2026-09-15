@@ -4,8 +4,9 @@ import Foundation
 struct AccountRegistry: Decodable, Sendable {
     let schemaVersion: Int
     let activeAccountKey: String?
+    var activeAccountActivatedAtMS: Int64? = nil
     let api: APIConfiguration?
-    let accounts: [CodexAccount]
+    var accounts: [CodexAccount]
 
     static let empty = AccountRegistry(
         schemaVersion: 3,
@@ -29,6 +30,7 @@ struct AccountRegistry: Decodable, Sendable {
     enum CodingKeys: String, CodingKey {
         case schemaVersion = "schema_version"
         case activeAccountKey = "active_account_key"
+        case activeAccountActivatedAtMS = "active_account_activated_at_ms"
         case api
         case accounts
     }
@@ -49,8 +51,8 @@ struct CodexAccount: Decodable, Identifiable, Sendable {
     let plan: String?
     let authMode: String?
     let lastUsedAt: Int64?
-    let lastUsageAt: Int64?
-    let lastUsage: UsageSnapshot?
+    var lastUsageAt: Int64?
+    var lastUsage: UsageSnapshot?
 
     var id: String { accountKey }
 
@@ -171,6 +173,14 @@ struct UsageMeter: Identifiable, Equatable, Sendable {
         default:
             let hours = max(1, windowMinutes / 60)
             return "\(hours)h"
+        }
+    }
+
+    var displayTitle: String {
+        switch windowMinutes {
+        case 300: return "5시간 잔여량"
+        case 10_080: return "주간 잔여량"
+        default: return "\(label) 잔여량"
         }
     }
 

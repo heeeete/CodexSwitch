@@ -24,11 +24,14 @@ struct AccountOverview: View {
 
                 ActiveAccountDetail(item: currentAccount)
                 .padding(.horizontal, 16)
-                .padding(.vertical, 6)
+                .padding(.top, 12)
+                .padding(.bottom, 14)
+
+                Divider().padding(.horizontal, 16)
 
                 ResetCreditSection(state: resetCreditState)
                     .padding(.horizontal, 16)
-                    .padding(.vertical, 8)
+                    .padding(.vertical, 12)
             }
         }
     }
@@ -40,59 +43,67 @@ struct AccountOverview: View {
     }
 }
 
-// 현재 계정의 쿠폰은 기기 현지 시각으로 표시하고 만료가 가까운 순서로 나열한다.
+// 만료가 가까운 쿠폰부터 남은 시간을 큰 숫자로 표시한다.
 struct ResetCreditSection: View {
     let state: ResetCreditState
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         TimelineView(.periodic(from: .now, by: 60)) { context in
-            VStack(alignment: .leading, spacing: 5) {
-                Text("초기화 쿠폰")
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(CodexSwitchDesign.smallText(for: colorScheme))
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Text("초기화 쿠폰").font(.system(size: 12, weight: .semibold))
+                    Spacer()
+                    if case let .loaded(credits) = state {
+                        Text("\(ResetCredit.available(in: credits, at: context.date).count)장")
+                            .font(.system(size: 12))
+                            .foregroundStyle(.secondary)
+                    }
+                }
                 switch state {
                 case .loading:
                     statusText("쿠폰 조회 중…")
+                        // 첫 조회 중 메뉴를 열어도 일반적인 세 장이 도착할 공간을 확보한다.
+                        .frame(height: 84, alignment: .topLeading)
                 case .failed:
                     statusText("쿠폰을 조회하지 못했어요. 새로고침해 주세요.")
+                        .frame(height: 84, alignment: .topLeading)
                 case let .loaded(credits):
                     let available = ResetCredit.available(in: credits, at: context.date)
                     if available.isEmpty {
                         statusText("사용 가능한 쿠폰 없음")
                     } else {
-                        // 쿠폰이 많아져도 메뉴가 화면 밖으로 늘어나지 않게 목록만 스크롤한다.
+                        // 긴 목록은 스크롤하고 일반적인 세 장은 한눈에 표시한다.
                         ScrollView {
                             VStack(spacing: 0) {
                                 ForEach(Array(available.enumerated()), id: \.element.id) { index, credit in
-                                    HStack {
-                                        Text("쿠폰 \(index + 1)")
-                                        Spacer(minLength: 8)
-                                        if let expiresAt = credit.expiresAt {
-                                            Text("\(expiresAt.formatted(.dateTime.year().month(.twoDigits).day(.twoDigits).hour().minute())) 만료")
-                                        } else {
-                                            Text("만료일 없음")
-                                        }
+                                    HStack(spacing: 10) {
+                                        Image(systemName: "ticket").font(.system(size: 14))
+                                            .accessibilityHidden(true)
+                                        Text("쿠폰 \(index + 1)").font(.system(size: 13))
+                                        Spacer(minLength: 4)
+                                        Text("남은 시간").font(.system(size: 10))
+                                            .foregroundStyle(.secondary)
+                                        Text(credit.remainingTime(at: context.date))
+                                            .font(.system(size: 13, weight: .semibold, design: .monospaced))
+                                            .frame(minWidth: 76, alignment: .trailing)
                                     }
-                                    .font(.system(size: 11, weight: .medium))
-                                    .foregroundStyle(CodexSwitchDesign.secondaryText(for: colorScheme))
-                                    .frame(height: 24)
+                                    .frame(height: 28)
                                     .accessibilityElement(children: .combine)
                                 }
                             }
                         }
-                        .frame(height: CGFloat(min(available.count, 4)) * 24)
+                        .frame(height: CGFloat(min(available.count, 3)) * 28)
                     }
                 }
             }
+            .foregroundStyle(CodexSwitchDesign.smallText(for: colorScheme))
             .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 
     private func statusText(_ text: String) -> some View {
-        Text(text)
-            .font(.system(size: 11))
-            .foregroundStyle(CodexSwitchDesign.secondaryText(for: colorScheme))
+        Text(text).font(.system(size: 11)).foregroundStyle(.secondary)
     }
 }
 
@@ -211,92 +222,82 @@ private struct AccountSwitcherTab: View {
     }
 }
 
-// 선택된 계정의 사용량 창만 넓은 막대로 자세히 보여준다.
+// 일반 Codex 기록에 실제로 있는 창만 표시하므로 5시간 창의 추가·제거도 반영한다.
 private struct ActiveAccountDetail: View {
     let item: AccountListItem
 
-    @Environment(\.colorScheme) private var colorScheme
-
     var body: some View {
-        VStack(spacing: 6) {
-            if item.account.usageMeters.isEmpty {
-                Text("사용량 정보 없음")
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(CodexSwitchDesign.smallText(for: colorScheme))
-                    .frame(maxWidth: .infinity, minHeight: 50, alignment: .leading)
-            } else {
-                ForEach(item.account.usageMeters) { meter in
-                    DetailedUsageMeterRow(meter: meter)
+        TimelineView(.periodic(from: .now, by: 60)) { context in
+            let meters = [item.account.lastUsage?.primary, item.account.lastUsage?.secondary]
+                .compactMap { $0 }.compactMap { UsageMeter(window: $0, now: context.date) }
+                .sorted { $0.windowMinutes < $1.windowMinutes }
+            VStack(spacing: 14) {
+                if meters.isEmpty {
+                    Text("사용량 정보 없음")
+                        .font(.system(size: 12, weight: .medium)).foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, minHeight: 50, alignment: .leading)
+                } else {
+                    ForEach(meters) { meter in
+                        DetailedUsageMeterRow(meter: meter, date: context.date, isCompact: meters.count > 1)
+                    }
                 }
             }
+            .accessibilityElement(children: .contain)
         }
-        .accessibilityElement(children: .contain)
     }
 }
 
-// 상세 사용량 행은 남은 비율과 정확한 재설정 카운트다운을 한 줄에 맞춘다.
+// 잔여 비율을 가장 크게, 초기화까지 남은 시간과 소비 비율을 보조 정보로 보여준다.
 private struct DetailedUsageMeterRow: View {
     let meter: UsageMeter
-
+    let date: Date
+    let isCompact: Bool
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
-        Group {
-            if meter.resetsAt != nil {
-                TimelineView(.periodic(from: .now, by: 60)) { context in
-                    content(at: context.date)
+        VStack(alignment: .leading, spacing: 7) {
+            HStack(alignment: .bottom) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(meter.displayTitle).font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(.secondary)
+                    HStack(alignment: .firstTextBaseline, spacing: 6) {
+                        Text("\(meter.remainingPercent)%")
+                            .font(.system(size: isCompact ? 32 : 40, weight: .bold, design: .rounded))
+                            .monospacedDigit()
+                        Text("남음").font(.system(size: 16, weight: .medium)).foregroundStyle(.secondary)
+                    }
                 }
-            } else {
-                content(at: Date())
+                Spacer(minLength: 8)
+                Rectangle().fill(CodexSwitchDesign.hairline(for: colorScheme))
+                    .frame(width: 1, height: 38)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("초기화까지").font(.system(size: 11)).foregroundStyle(.secondary)
+                    Text(meter.resetCountdown(at: date) ?? "—")
+                        .font(.system(size: 16, weight: .semibold, design: .monospaced))
+                }
+                .padding(.leading, 6)
+                .padding(.bottom, 4)
             }
-        }
-        .help(resetHelp)
-    }
-
-    private func content(at date: Date) -> some View {
-        HStack(spacing: 8) {
-            Text(meter.label.uppercased())
-                .font(.system(size: 11, weight: .semibold, design: .monospaced))
-                .foregroundStyle(CodexSwitchDesign.smallText(for: colorScheme))
-                .frame(width: 28, alignment: .leading)
-
+            // 넓은 막대는 남은 비율을 그대로 채워 숫자와 시각 정보가 일치하게 한다.
             GeometryReader { proxy in
                 ZStack(alignment: .leading) {
-                    Capsule()
-                        .fill(Color.secondary.opacity(0.16))
-                    Capsule()
-                        .fill(barColor)
+                    Capsule().fill(Color.secondary.opacity(0.18))
+                    Capsule().fill(barColor)
                         .frame(width: proxy.size.width * CGFloat(meter.remainingPercent) / 100)
                 }
             }
-            .frame(minWidth: 76, maxWidth: 124)
-            .frame(height: 5)
-
-            Text("\(meter.remainingPercent)% 남음")
-                .font(.system(size: 10, weight: .semibold, design: .monospaced))
-                .foregroundStyle(CodexSwitchDesign.smallText(for: colorScheme))
-                .frame(width: 63, alignment: .leading)
-
-            Spacer(minLength: 0)
-
-            Text(meter.resetCountdown(at: date) ?? "—")
-                .font(.system(size: 10, weight: .medium, design: .monospaced))
-                .foregroundStyle(CodexSwitchDesign.secondaryText(for: colorScheme))
-                .frame(minWidth: 48, alignment: .trailing)
-                .lineLimit(1)
+            .frame(height: 10)
+            .accessibilityHidden(true)
+            Text("\(100 - meter.remainingPercent)% 사용")
+                .font(.system(size: 11)).foregroundStyle(.secondary)
         }
-        .frame(minHeight: 23)
+        .accessibilityElement(children: .combine)
     }
 
     private var barColor: Color {
         if meter.remainingPercent <= 10 { return CodexSwitchDesign.coral }
         if meter.remainingPercent <= 25 { return CodexSwitchDesign.amber }
         return CodexSwitchDesign.aqua
-    }
-
-    private var resetHelp: String {
-        guard let resetsAt = meter.resetsAt else { return "재설정 시간 정보 없음" }
-        return "재설정: \(resetsAt.formatted(date: .abbreviated, time: .shortened))"
     }
 }
 

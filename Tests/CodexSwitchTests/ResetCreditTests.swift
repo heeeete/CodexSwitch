@@ -4,6 +4,17 @@ import XCTest
 @testable import CodexSwitch
 
 final class ResetCreditTests: XCTestCase {
+    // 날짜 대신 만료까지 남은 기간을 표시하고 하루·시간·분 경계를 검증한다.
+    func testRemainingTimeCountdown() {
+        let now = Date(timeIntervalSince1970: 1_000)
+        for (seconds, expected) in [(504_000, "5d 20h"), (86_400, "1d 0h"),
+                                    (7_260, "2h 1m"), (60, "1m"), (59, "<1m"), (0, "만료")] {
+            let credit = ResetCredit(id: "test", status: "available", resetType: "codex_rate_limits",
+                                     expiresAt: now.addingTimeInterval(Double(seconds)))
+            XCTAssertEqual(credit.remainingTime(at: now), expected)
+        }
+    }
+
     // 실제 응답의 소수점 날짜를 읽고 사용·만료된 쿠폰을 제외해 만료일 순으로 정렬한다.
     func testExpirationOrderingAndFiltering() throws {
         let credits = try ResetCreditClient.decode(Data(Self.response.utf8))
@@ -65,7 +76,6 @@ final class ResetCreditTests: XCTestCase {
         let defaults = UserDefaults(suiteName: suite)!
         defer { defaults.removePersistentDomain(forName: suite) }
         defaults.set(false, forKey: "autoRefreshEnabled")
-        defaults.set(false, forKey: "directAPIRefreshEnabled")
         let loader = ControlledLoader()
         let store = AccountStore(userDefaults: defaults, resetCreditLoader: { key in
             await loader.load(key)
@@ -85,11 +95,54 @@ final class ResetCreditTests: XCTestCase {
         for _ in 0..<100 where store.resetCreditState == .loading {
             try await Task.sleep(for: .milliseconds(10))
         }
-        XCTAssertFalse(store.directAPIRefreshEnabled)
         XCTAssertEqual(store.resetCreditState, .loaded([newCredit]))
         await loader.finish("first", credits: [])
         try await Task.sleep(for: .milliseconds(30))
         XCTAssertEqual(store.resetCreditState, .loaded([newCredit]))
+    }
+
+    // 같은 계정의 요청이 진행되는 동안 마지막 쿠폰을 유지하고 완료 결과로 교체한다.
+    @MainActor
+    func testRefreshKeepsCurrentAccountCreditsVisible() async throws {
+        let suite = "ResetCreditRefresh-\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defaults.set(false, forKey: "autoRefreshEnabled")
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let loader = ControlledLoader()
+        let store = AccountStore(userDefaults: defaults, resetCreditLoader: { await loader.load($0) })
+        let registry = try Self.registry(key: "same")
+        store.applyPreviewRegistry(registry)
+        for _ in 0..<100 {
+            if await loader.hasRequest("same") { break }
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        let credit = ResetCredit(id: "kept", status: "available", resetType: "codex_rate_limits", expiresAt: nil)
+        await loader.finish("same", credits: [credit])
+        for _ in 0..<100 where store.resetCreditState == .loading {
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        store.applyPreviewRegistry(registry)
+        XCTAssertEqual(store.resetCreditState, .loaded([credit]))
+        for _ in 0..<100 {
+            if await loader.hasRequest("same") { break }
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        await loader.finish("same", credits: [])
+        for _ in 0..<100 where store.resetCreditState != .loaded([]) {
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        XCTAssertEqual(store.resetCreditState, .loaded([]))
+    }
+
+    // 첫 조회 중 확보한 높이가 일반적인 세 장 결과보다 작아지지 않는다.
+    @MainActor
+    func testLoadingReservesThreeCouponRows() {
+        let credits = (0..<3).map {
+            ResetCredit(id: String($0), status: "available", resetType: "codex_rate_limits", expiresAt: nil)
+        }
+        let loading = NSHostingView(rootView: ResetCreditSection(state: .loading).frame(width: 340)).fittingSize
+        let loaded = NSHostingView(rootView: ResetCreditSection(state: .loaded(credits)).frame(width: 340)).fittingSize
+        XCTAssertGreaterThanOrEqual(loading.height, loaded.height)
     }
 
     // 쿠폰 목록이 372pt 메뉴에서 밝은 모드와 어두운 모드 모두 잘리지 않는지 확인한다.

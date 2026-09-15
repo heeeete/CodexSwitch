@@ -9,12 +9,11 @@ struct MenuContentView: View {
 
     @ObservedObject var store: AccountStore
     @ObservedObject var updateStore: UpdateStore = UpdateStore()
+    var showSettings: (() -> Void)? = nil
     @Environment(\.colorScheme) private var colorScheme
-    @Environment(\.openSettings) private var openSettings
     @State private var refreshIsHovered = false
     @State private var autoRefreshRowIsHovered = false
     @State private var restartRowIsHovered = false
-    @State private var directAPIRowIsHovered = false
     @State private var presentedAccountPopover: AccountPopoverKind?
     @State private var hoveredAccountPopoverRow: AccountPopoverKind?
     @State private var hoveredAccountPopover: AccountPopoverKind?
@@ -36,7 +35,7 @@ struct MenuContentView: View {
             footer
         }
         .frame(width: 372)
-        .background(.regularMaterial)
+        // 메뉴 창의 기본 재질을 그대로 사용하고 별도 배경을 겹치지 않는다.
         .task {
             await store.loadLocalAccounts()
         }
@@ -104,9 +103,7 @@ struct MenuContentView: View {
             .help(
                 store.isRefreshing
                     ? "사용량 새로 고침 취소"
-                    : store.directAPIRefreshEnabled
-                        ? "실험적 API로 사용량 새로 고침"
-                        : "로컬 사용량 새로 고침"
+                    : "사용량과 쿠폰 새로 고침"
             )
             .accessibilityLabel(store.isRefreshing ? "사용량 새로 고침 취소" : "사용량 새로 고침")
         }
@@ -179,11 +176,11 @@ struct MenuContentView: View {
                 // 자동 갱신 주기를 기존 계정 변경 설정 바로 위에서 켜고 끈다.
                 HStack(spacing: 8) {
                     Text("자동 새로고침")
-                        .font(.system(size: 11, weight: .medium))
+                        .font(.system(size: 13))
 
                     Text("1분마다")
-                        .font(.system(size: 9, weight: .medium, design: .monospaced))
-                        .foregroundStyle(CodexSwitchDesign.smallText(for: colorScheme))
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
 
                     Spacer()
 
@@ -192,7 +189,7 @@ struct MenuContentView: View {
                         .toggleStyle(.switch)
                         .controlSize(.mini)
                 }
-                .frame(minHeight: 34)
+                .frame(minHeight: 28)
                 .padding(.horizontal, 9)
                 .background(
                     autoRefreshRowIsHovered
@@ -203,14 +200,11 @@ struct MenuContentView: View {
                 .onHover { hovering in
                     autoRefreshRowIsHovered = hovering
                 }
-                .help("메뉴를 닫아도 1분마다 현재 조회 설정으로 사용량을 새로 고칩니다.")
-
-                sectionDivider
-                    .padding(.leading, 10)
+                .help("메뉴를 닫아도 1분마다 사용량과 쿠폰을 새로 고칩니다.")
 
                 HStack(spacing: 8) {
                     Text("변경 후 ChatGPT 열기")
-                        .font(.system(size: 11, weight: .medium))
+                        .font(.system(size: 13))
 
                     Spacer()
 
@@ -219,7 +213,7 @@ struct MenuContentView: View {
                         .toggleStyle(.switch)
                         .controlSize(.mini)
                 }
-                .frame(minHeight: 34)
+                .frame(minHeight: 28)
                 .padding(.horizontal, 9)
                 .background(
                     restartRowIsHovered
@@ -231,77 +225,24 @@ struct MenuContentView: View {
                     restartRowIsHovered = hovering
                 }
                 .help("안전한 계정 변경을 위해 실행 중인 ChatGPT는 항상 먼저 닫습니다.")
-
-                sectionDivider
-                    .padding(.leading, 10)
-
-                HStack(spacing: 8) {
-                    Text("실험적 API 조회")
-                        .font(.system(size: 11, weight: .medium))
-
-                    Text(store.directAPIRefreshEnabled ? "직접 API · 시각 확인" : "안전한 로컬 조회")
-                        .font(.system(size: 9, weight: .medium, design: .monospaced))
-                        .foregroundStyle(
-                            store.directAPIRefreshEnabled
-                                ? CodexSwitchDesign.warningText(for: colorScheme)
-                                : CodexSwitchDesign.smallText(for: colorScheme)
-                        )
-                        .lineLimit(1)
-
-                    Spacer(minLength: 8)
-
-                    Toggle(
-                        "",
-                        isOn: Binding(
-                            get: { store.directAPIRefreshEnabled },
-                            set: { store.setDirectAPIRefreshEnabled($0) }
-                        )
-                    )
-                    .labelsHidden()
-                    .toggleStyle(.switch)
-                    .controlSize(.mini)
-                    .disabled(store.isBusy)
-                }
-                .frame(minHeight: 34)
-                .padding(.horizontal, 9)
-                .background(
-                    directAPIRowIsHovered && !store.isBusy
-                        ? CodexSwitchDesign.hoverBackground(for: colorScheme)
-                        : Color.clear,
-                    in: RoundedRectangle(cornerRadius: 7, style: .continuous)
-                )
-                .onHover { hovering in
-                    directAPIRowIsHovered = hovering
-                }
-                .help("비공개 ChatGPT 사용량·워크스페이스 API를 사용하며 계정 제한 위험이 있습니다.")
             }
             .padding(.horizontal, 6)
-            .padding(.vertical, 3)
+            .padding(.vertical, 6)
 
             sectionDivider
                 .padding(.horizontal, 8)
 
             VStack(spacing: 0) {
+                // 같은 계정 명령끼리는 선 없이 묶고 설정 그룹 앞에서만 구분한다.
                 accountSwitchRow
-
-                sectionDivider
-                    .padding(.leading, 10)
-
                 accountConnectionRow
-
-                sectionDivider
-                    .padding(.leading, 10)
-
                 accountRemovalRow
 
                 sectionDivider
-                    .padding(.leading, 10)
+                    .padding(.horizontal, 9)
+                    .padding(.vertical, 5)
 
                 settingsRow
-
-                sectionDivider
-                    .padding(.leading, 10)
-
                 quitRow
             }
             .padding(.horizontal, 6)
@@ -418,8 +359,7 @@ struct MenuContentView: View {
     // 메뉴바 전용 앱에서도 설정 창을 앞으로 가져오고 같은 창을 다시 사용한다.
     private var settingsRow: some View {
         MenuCommandRow(isDisabled: store.isRestartingForUpdate, action: {
-            NSApp.activate(ignoringOtherApps: true)
-            openSettings()
+            showSettings?()
         }) {
             MenuCommandLabel(title: "설정…", systemImage: "gearshape", trailingText: "⌘,")
         }
@@ -441,9 +381,7 @@ struct MenuContentView: View {
     }
 
     private var sectionDivider: some View {
-        Rectangle()
-            .fill(CodexSwitchDesign.hairline(for: colorScheme))
-            .frame(height: 1)
+        Divider()
     }
 
     // 활성 계정이 없을 때는 저장 계정 하나만 있어도 최초 선택 대상으로 인정한다.
@@ -644,12 +582,12 @@ private struct MenuCommandLabel: View {
 
             if let trailingText {
                 Text(trailingText)
-                    .font(.system(size: 10, weight: .medium, design: .monospaced))
+                    .font(.system(size: 12))
                     .foregroundStyle(Color.secondary)
             }
         }
         .frame(maxWidth: .infinity)
-        .font(.system(size: 11, weight: .medium))
+        .font(.system(size: 13))
         .foregroundStyle(Color.primary)
     }
 }
@@ -679,7 +617,7 @@ private struct MenuCommandRow<LabelContent: View>: View {
                 label()
                 Spacer(minLength: 8)
             }
-            .frame(maxWidth: .infinity, minHeight: 32, alignment: .leading)
+            .frame(maxWidth: .infinity, minHeight: 26, alignment: .leading)
             .padding(.horizontal, 9)
             .contentShape(Rectangle())
         }

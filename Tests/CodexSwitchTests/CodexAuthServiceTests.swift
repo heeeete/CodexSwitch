@@ -509,7 +509,7 @@ final class CodexAuthServiceTests: XCTestCase {
                 "CODEXSWITCH_LATE_PID_FILE": latePIDURL.path
             ]
         )
-        let refreshTask = Task { try await service.refreshAccounts(useDirectAPI: false) }
+        let refreshTask = Task { try await service.refreshAccounts() }
         guard try await waitForPID(at: initialPIDURL) != nil else {
             refreshTask.cancel()
             XCTFail("최초 helper 자식 PID가 기록되지 않았습니다.")
@@ -540,15 +540,13 @@ final class CodexAuthServiceTests: XCTestCase {
     }
 
     // 모든 helper 호출은 앱이 소유하지 않은 upstream 자동 전환 서비스를 건드리지 않는다.
-    func testHelperEnvironmentSkipsServiceReconcileAndUsesPATHNode() async throws {
+    func testLocalRefreshSkipsServiceReconcileWithoutNode() async throws {
         let rootURL = FileManager.default.temporaryDirectory
             .appendingPathComponent("CodexSwitchEnvironment-\(UUID().uuidString)", isDirectory: true)
         defer { try? FileManager.default.removeItem(at: rootURL) }
         let binURL = rootURL.appendingPathComponent("bin", isDirectory: true)
         try FileManager.default.createDirectory(at: binURL, withIntermediateDirectories: true)
 
-        let nodeURL = binURL.appendingPathComponent("node")
-        try makeExecutableScript("#!/bin/sh\nexit 0\n", at: nodeURL)
         let helperURL = rootURL.appendingPathComponent("codex-auth")
         let argumentsURL = rootURL.appendingPathComponent("arguments.txt")
         let serviceFlagURL = rootURL.appendingPathComponent("service-flag.txt")
@@ -576,43 +574,11 @@ final class CodexAuthServiceTests: XCTestCase {
             ]
         )
 
-        try await service.refreshAccounts(useDirectAPI: true)
+        try await service.refreshAccounts()
 
-        XCTAssertEqual(try readTrimmed(argumentsURL), "list --api")
+        XCTAssertEqual(try readTrimmed(argumentsURL), "list --skip-api")
         XCTAssertEqual(try readTrimmed(serviceFlagURL), "1")
-        XCTAssertEqual(try readTrimmed(nodePathURL), nodeURL.path)
-    }
-
-    // codex-auth가 공식 지원하는 Node override는 앱이 삭제하거나 다른 Node로 바꾸지 않는다.
-    func testDirectAPIRefreshPreservesCodexAuthNodeOverride() async throws {
-        let rootURL = FileManager.default.temporaryDirectory
-            .appendingPathComponent("CodexSwitchNodeOverride-\(UUID().uuidString)", isDirectory: true)
-        defer { try? FileManager.default.removeItem(at: rootURL) }
-        try FileManager.default.createDirectory(at: rootURL, withIntermediateDirectories: true)
-
-        let nodeURL = rootURL.appendingPathComponent("custom-node")
-        try makeExecutableScript("#!/bin/sh\nexit 0\n", at: nodeURL)
-        let helperURL = rootURL.appendingPathComponent("codex-auth")
-        let nodePathURL = rootURL.appendingPathComponent("node-path.txt")
-        try makeExecutableScript(
-            "#!/bin/sh\n/bin/echo \"$CODEX_AUTH_NODE_EXECUTABLE\" > \"$CODEXSWITCH_NODE_PATH_FILE\"\n",
-            at: helperURL
-        )
-
-        let service = CodexAuthService(
-            registryURL: rootURL.appendingPathComponent("accounts/registry.json"),
-            environment: [
-                "HOME": rootURL.path,
-                "CODEX_HOME": rootURL.path,
-                "PATH": "/usr/bin:/bin:/usr/sbin:/sbin",
-                "CODEX_AUTH_NODE_EXECUTABLE": nodeURL.path,
-                "CODEX_SWITCH_HELPER_EXECUTABLE": helperURL.path,
-                "CODEXSWITCH_NODE_PATH_FILE": nodePathURL.path
-            ]
-        )
-
-        try await service.refreshAccounts(useDirectAPI: true)
-        XCTAssertEqual(try readTrimmed(nodePathURL), nodeURL.path)
+        XCTAssertEqual(try readTrimmed(nodePathURL), "")
     }
 
     // 비대화식 helper가 SIGTERM을 무시해도 제한시간 뒤 강제 종료하고 busy 상태를 풀 수 있다.
@@ -649,7 +615,7 @@ final class CodexAuthServiceTests: XCTestCase {
 
         let startedAt = Date()
         do {
-            try await service.refreshAccounts(useDirectAPI: false)
+            try await service.refreshAccounts()
             XCTFail("응답 없는 helper는 성공하면 안 됩니다.")
         } catch CodexAuthError.commandTimedOut {
             XCTAssertLessThan(Date().timeIntervalSince(startedAt), 3)
@@ -681,7 +647,7 @@ final class CodexAuthServiceTests: XCTestCase {
         )
 
         do {
-            try await service.refreshAccounts(useDirectAPI: false)
+            try await service.refreshAccounts()
             XCTFail("실패한 helper 명령은 성공하면 안 됩니다.")
         } catch CodexAuthError.commandFailed(let message) {
             XCTAssertTrue(message.contains("stderr-detail"), message)

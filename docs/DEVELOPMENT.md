@@ -18,12 +18,15 @@ Node.js나 전역 `codex-auth` 설치는 필요하지 않습니다. 빌드에는
 cd ~/CodexSwitch
 swift test
 ./scripts/build-app.sh
-open dist/CodexSwitch.app
+open dist/local-test/CodexSwitch.app
 ```
 
 `build-app.sh`는 현재 Mac 아키텍처에 맞는 Swift 실행 파일과 `codex-auth` helper,
 앱 아이콘, 오픈소스 고지를 표준 macOS 앱 번들로 조립합니다. 기본 빌드는 로컬
-테스트용 ad-hoc 서명을 사용합니다.
+테스트용 ad-hoc 서명을 사용하며, Team ID가 없는 이 빌드에는 Hardened Runtime을
+적용하지 않습니다. 로컬 확인용 최신 앱은 `dist/local-test/CodexSwitch.app` 하나만
+유지하며 다음 빌드가 같은 경로를 교체합니다. 자동 설치까지 확인할 때는
+`CODE_SIGN_IDENTITY`에 Developer ID Application 인증서를 지정합니다.
 
 다른 아키텍처를 명시하려면 `CODEXSWITCH_ARCH`를 설정합니다.
 
@@ -45,13 +48,13 @@ swift test
 
 ```bash
 ./scripts/build-app.sh
-./scripts/verify-release.sh dist/CodexSwitch.app
+./scripts/verify-release.sh dist/local-test/CodexSwitch.app
 ```
 
 새 사용자 환경만 따로 확인할 수도 있습니다.
 
 ```bash
-./scripts/test-clean-install.sh dist/CodexSwitch.app
+./scripts/test-clean-install.sh dist/local-test/CodexSwitch.app
 ```
 
 ## GitHub Actions CI
@@ -86,7 +89,7 @@ CI는 Apple Silicon용 앱을 ad-hoc 서명으로 조립한 뒤 Swift 테스트,
 
 ## 계정 데이터와 전환
 
-- UI는 `~/.codex/accounts/registry.json`의 계정 메타데이터만 읽어 표시합니다.
+- UI는 `~/.codex/accounts/registry.json`의 계정 메타데이터와 일반 Codex의 로컬 사용량 기록을 읽어 표시합니다.
 - 계정 선택은 화면 순서나 이메일 일부가 아니라 정확한 `account_key`를 사용합니다.
 - 계정을 바꾸기 전에 현재 인증정보를 스냅샷에 동기화합니다.
 - 선택한 스냅샷은 임시 파일을 거쳐 `auth.json`에 원자적으로 적용합니다.
@@ -133,9 +136,10 @@ CodexSwitch는 앱에 포함된 helper만 실행하며 전역 npm 설치본으�
 
 ## 보안 경계
 
-기본 사용량 조회는 비공개 ChatGPT API를 호출하지 않습니다. 실험적 API 조회는
-사용자가 명시적으로 동의했을 때만 `--api`를 전달하며, 기본 모드는 `--skip-api`를
-사용합니다.
+사용량 조회는 항상 `--skip-api`로 실행합니다. 앱의 `LocalUsageReader`가 최근 세션에서
+`limit_id`가 `codex`인 기록과 모델 구분값이 없던 구형 기록만 선택합니다.
+계정 활성화 시각 이전 기록은 제외하고 5시간·주간 창 구성은 원본을 따릅니다.
+쿠폰 조회는 별도 GET API를 사용하며 토큰을 프로세스 인자에 전달하지 않습니다.
 
 인증 파일은 비밀번호처럼 취급해야 합니다. 실제 `auth.json`, registry, 계정
 스냅샷을 저장소나 이슈에 첨부하지 마세요. CodexSwitch가 계정을 변경하거나

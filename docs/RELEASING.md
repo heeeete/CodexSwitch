@@ -70,7 +70,7 @@ CI가 통과했는지 확인합니다. 필요하면 다음 명령으로 같은 �
 
 ```bash
 swift test
-./scripts/build-app.sh
+./scripts/build-app.sh dist
 ./scripts/verify-release.sh dist/CodexSwitch.app
 ```
 

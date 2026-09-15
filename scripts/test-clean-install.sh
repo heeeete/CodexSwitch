@@ -4,7 +4,7 @@ set -euo pipefail
 
 # npm, Node, 전역 Codex가 없는 새 사용자 환경을 가짜 공식 로그인으로 재현한다.
 PROJECT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-APP_BUNDLE="${1:-$PROJECT_ROOT/dist/CodexSwitch.app}"
+APP_BUNDLE="${1:-$PROJECT_ROOT/dist/local-test/CodexSwitch.app}"
 HELPER_EXECUTABLE="$APP_BUNDLE/Contents/Helpers/codex-auth"
 FIXTURE_CODEX="$PROJECT_ROOT/Tests/Fixtures/fake-codex"
 FIRST_AUTH="$PROJECT_ROOT/Tests/Fixtures/fake-auth.json"

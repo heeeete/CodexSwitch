@@ -13,6 +13,19 @@ struct ResetCredit: Decodable, Identifiable, Sendable, Equatable {
         case expiresAt = "expires_at"
     }
 
+    // 만료 시각 대신 남은 기간을 일·시간으로, 하루 미만은 시간·분으로 표시한다.
+    func remainingTime(at now: Date) -> String {
+        guard let expiresAt else { return "기한 없음" }
+        let seconds = max(0, Int(expiresAt.timeIntervalSince(now)))
+        if seconds == 0 { return "만료" }
+        let days = seconds / 86_400
+        let hours = seconds % 86_400 / 3_600
+        if days > 0 { return "\(days)d \(hours)h" }
+        let minutes = seconds % 3_600 / 60
+        if hours > 0 { return "\(hours)h \(minutes)m" }
+        return minutes > 0 ? "\(minutes)m" : "<1m"
+    }
+
     // 사용 가능하고 아직 만료되지 않은 Codex 쿠폰을 만료일 순으로 정렬한다.
     static func available(in credits: [Self], at now: Date) -> [Self] {
         credits.filter {

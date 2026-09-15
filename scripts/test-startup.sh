@@ -16,10 +16,11 @@ info = dict(CFBundleIdentifier="com.bluepin.CodexSwitch.StartupTest." + app.pare
 (app / "Contents/Info.plist").write_bytes(plistlib.dumps(info))
 PY
 
-# DEBUG는 설치 경로 검사만 건너뛰며 설치된 앱과 같은 startRuntime·Scene을 실행한다.
+# DEBUG는 설치 경로 검사만 건너뛰며 설치된 앱과 같은 startRuntime·NSMenu를 실행한다.
 swiftc -parse-as-library -swift-version 6 -DDEBUG -target "$(uname -m)-apple-macosx14.0" \
     "$PROJECT_ROOT/Sources/CodexSwitch/CodexSwitchApp.swift" \
     "$PROJECT_ROOT/Sources/CodexSwitch/Store/AppStartup.swift" \
+    "$PROJECT_ROOT/Sources/CodexSwitch/Views/StatusMenuController.swift" \
     "$PROJECT_ROOT/Sources/CodexSwitch/Services/AppInstaller.swift" \
     "$PROJECT_ROOT/Tests/StartupIntegration/StartupFixture.swift" \
     -o "$TEST_APP/Contents/MacOS/StartupTest"

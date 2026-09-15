@@ -40,18 +40,9 @@ final class AccountStore: ObservableObject {
             )
         }
     }
-    @Published private(set) var directAPIRefreshEnabled: Bool {
-        didSet {
-            userDefaults.set(
-                directAPIRefreshEnabled,
-                forKey: Self.directAPIRefreshPreferenceKey
-            )
-        }
-    }
 
     private static let autoRefreshPreferenceKey = "autoRefreshEnabled"
     private static let restartPreferenceKey = "restartCodexAfterSwitch"
-    private static let directAPIRefreshPreferenceKey = "directAPIRefreshEnabled"
     private let authService: CodexAuthService
     private let userDefaults: UserDefaults
     private let autoRefreshInterval: Duration
@@ -62,6 +53,7 @@ final class AccountStore: ObservableObject {
     private var refreshTask: Task<Void, Never>?
     private var autoRefreshTask: Task<Void, Never>?
     private var resetCreditTask: Task<Void, Never>?
+    private var resetCreditAccountKey: String?
     private let resetCreditLoader: @Sendable (String) async throws -> [ResetCredit]
 
     init(
@@ -86,9 +78,6 @@ final class AccountStore: ObservableObject {
                 forKey: Self.restartPreferenceKey
             )
         }
-        directAPIRefreshEnabled = userDefaults.bool(
-            forKey: Self.directAPIRefreshPreferenceKey
-        )
         updateAutoRefreshTask()
     }
 
@@ -187,9 +176,7 @@ final class AccountStore: ObservableObject {
                 refreshTask = nil
             }
             do {
-                try await authService.refreshAccounts(
-                    useDirectAPI: directAPIRefreshEnabled
-                )
+                try await authService.refreshAccounts()
                 let registry = try await authService.loadRegistry()
                 apply(registry)
             } catch is CancellationError {
@@ -360,26 +347,6 @@ final class AccountStore: ObservableObject {
         notice = nil
     }
 
-    // 비공개 API 위험을 명확히 확인한 뒤에만 정확한 원격 조회를 켠다.
-    func setDirectAPIRefreshEnabled(_ enabled: Bool) {
-        guard enabled != directAPIRefreshEnabled else { return }
-        guard enabled else {
-            directAPIRefreshEnabled = false
-            return
-        }
-
-        let alert = NSAlert()
-        alert.alertStyle = .warning
-        alert.messageText = "실험적 API 조회를 켤까요?"
-        alert.informativeText = "새로 고칠 때 codex-auth가 액세스 토큰으로 OpenAI의 비공개 ChatGPT 사용량·워크스페이스 API를 직접 호출합니다. 토큰이 로컬 프로세스 인자에 잠시 노출될 수 있고, upstream은 이용약관 위반이나 계정 제한 가능성을 경고합니다. 기본 로컬 조회가 더 안전합니다."
-        alert.addButton(withTitle: "위험을 이해하고 켜기")
-        alert.addButton(withTitle: "취소")
-
-        if alert.runModal() == .alertFirstButtonReturn {
-            directAPIRefreshEnabled = true
-        }
-    }
-
     func quit() {
         guard !isBusy else { return }
         NSApplication.shared.terminate(nil)
@@ -398,7 +365,11 @@ final class AccountStore: ObservableObject {
     private func refreshResetCredits() {
         resetCreditTask?.cancel()
         resetCreditTask = nil
-        resetCreditState = .loading
+        // 같은 계정의 갱신 중에는 마지막 쿠폰을 유지하고, 계정 변경 시에만 이전 결과를 지운다.
+        if resetCreditAccountKey != activeAccountKey || resetCreditState == .failed {
+            resetCreditState = .loading
+        }
+        resetCreditAccountKey = activeAccountKey
         guard let key = activeAccountKey, activeAccount != nil else { return }
         let loader = resetCreditLoader
         resetCreditTask = Task { [weak self] in

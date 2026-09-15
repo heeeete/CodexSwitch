@@ -4,7 +4,7 @@ set -euo pipefail
 
 # SwiftPM 산출물과 고정된 helper를 표준 macOS 앱 번들로 조립한다.
 PROJECT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-OUTPUT_ROOT="${1:-$PROJECT_ROOT/dist}"
+OUTPUT_ROOT="${1:-$PROJECT_ROOT/dist/local-test}"
 APP_BUNDLE="$OUTPUT_ROOT/CodexSwitch.app"
 APP_CONTENTS="$APP_BUNDLE/Contents"
 APP_MACOS="$APP_CONTENTS/MacOS"
@@ -96,11 +96,13 @@ iconutil -c icns "$ICONSET_PATH" -o "$APP_RESOURCES/CodexSwitch.icns"
 # 복사 과정에서 따라온 Finder/provenance 확장 속성을 서명 전에 제거한다.
 xattr -cr "$APP_BUNDLE"
 
-# 중첩 helper를 먼저 서명한 뒤 앱 전체를 Hardened Runtime으로 서명한다.
+# 로컬 ad-hoc 서명에는 Team ID가 없으므로 배포 서명에서만 Hardened Runtime을 사용한다.
+SIGNING_OPTIONS=0
 if [[ "$SIGNING_IDENTITY" == "-" ]]; then
     TIMESTAMP_ARGUMENT="--timestamp=none"
 else
     TIMESTAMP_ARGUMENT="--timestamp"
+    SIGNING_OPTIONS=runtime
 fi
 
 # Sparkle의 실행 파일과 중첩 번들을 안쪽부터 같은 배포 인증서로 서명한다.
@@ -111,12 +113,12 @@ for component in \
     "$SPARKLE_FRAMEWORK/Versions/B/Autoupdate" \
     "$SPARKLE_FRAMEWORK/Versions/B/Updater.app" \
     "$SPARKLE_FRAMEWORK"; do
-    codesign --force --options runtime "$TIMESTAMP_ARGUMENT" \
+    codesign --force --options "$SIGNING_OPTIONS" "$TIMESTAMP_ARGUMENT" \
         --sign "$SIGNING_IDENTITY" "$component"
 done
-codesign --force --options runtime "$TIMESTAMP_ARGUMENT" \
+codesign --force --options "$SIGNING_OPTIONS" "$TIMESTAMP_ARGUMENT" \
     --sign "$SIGNING_IDENTITY" "$APP_HELPERS/codex-auth"
-codesign --force --options runtime "$TIMESTAMP_ARGUMENT" \
+codesign --force --options "$SIGNING_OPTIONS" "$TIMESTAMP_ARGUMENT" \
     --sign "$SIGNING_IDENTITY" "$APP_BUNDLE"
 codesign --verify --deep --strict --verbose=2 "$APP_BUNDLE"
 

@@ -305,7 +305,6 @@ private final class ProcessOutputCapture: @unchecked Sendable {
 actor CodexAuthService {
     private struct ChatGPTRuntime: Sendable {
         let codexPath: String?
-        let nodePath: String?
     }
 
     private struct StagedCredential: Sendable {
@@ -327,20 +326,18 @@ actor CodexAuthService {
     private let registryURL: URL
     private let environment: [String: String]
     private let standardCommandTimeout: TimeInterval
-    private let apiCommandTimeout: TimeInterval
+    private var localUsageReader = LocalUsageReader()
     private var mutationInProgress = false
     private var mutationWaiters: [CheckedContinuation<Void, Never>] = []
 
     init(
         registryURL: URL = CodexAuthService.defaultRegistryURL,
         environment: [String: String] = ProcessInfo.processInfo.environment,
-        standardCommandTimeout: TimeInterval = 30,
-        apiCommandTimeout: TimeInterval = 120
+        standardCommandTimeout: TimeInterval = 30
     ) {
         self.registryURL = registryURL
         self.environment = environment
         self.standardCommandTimeout = standardCommandTimeout
-        self.apiCommandTimeout = apiCommandTimeout
     }
 
     static var defaultRegistryURL: URL {
@@ -370,9 +367,18 @@ actor CodexAuthService {
 
         do {
             let data = try Data(contentsOf: registryURL)
-            let registry = try JSONDecoder().decode(AccountRegistry.self, from: data)
+            var registry = try JSONDecoder().decode(AccountRegistry.self, from: data)
             guard registry.schemaVersion <= 3 else {
                 throw CodexAuthError.unsupportedRegistryVersion(registry.schemaVersion)
+            }
+            // registry의 모델 구분 없는 사용량을 표시하지 않고 일반 Codex 기록으로 교체한다.
+            if let index = registry.accounts.firstIndex(where: { $0.accountKey == registry.activeAccountKey }) {
+                let reading = localUsageReader.latest(
+                    in: codexHomeURL.appendingPathComponent("sessions"),
+                    since: Date(timeIntervalSince1970: Double(registry.activeAccountActivatedAtMS ?? 0) / 1_000)
+                )
+                registry.accounts[index].lastUsage = reading?.usage
+                registry.accounts[index].lastUsageAt = reading.map { Int64($0.timestamp.timeIntervalSince1970) }
             }
             return registry
         } catch let error as CodexAuthError {
@@ -406,28 +412,16 @@ actor CodexAuthService {
         return try loadRegistry()
     }
 
-    // 정확한 조회는 사용자가 명시적으로 동의한 경우에만 비공개 API 모드를 사용한다.
-    func refreshAccounts(useDirectAPI: Bool) async throws {
+    // 사용량 새로고침은 항상 로컬 모드로 실행한다.
+    func refreshAccounts() async throws {
         await acquireMutation()
         defer { releaseMutation() }
         try Task.checkCancellation()
 
-        if useDirectAPI {
-            let runtime = try await resolveChatGPTRuntime(
-                requireCodex: false,
-                requireNode: true
-            )
-            _ = try await run(
-                arguments: ["list", "--api"],
-                nodeExecutablePath: runtime.nodePath,
-                timeout: apiCommandTimeout
-            )
-        } else {
-            _ = try await run(
-                arguments: ["list", "--skip-api"],
-                timeout: standardCommandTimeout
-            )
-        }
+        _ = try await run(
+            arguments: ["list", "--skip-api"],
+            timeout: standardCommandTimeout
+        )
     }
 
     // 계정별 스냅샷을 읽어 토큰을 프로세스 인자나 디스크 캐시에 남기지 않고 조회한다.
@@ -474,10 +468,7 @@ actor CodexAuthService {
         try Task.checkCancellation()
 
         try ensureCodexHomeDirectory()
-        let runtime = try await resolveChatGPTRuntime(
-            requireCodex: true,
-            requireNode: false
-        )
+        let runtime = try await resolveChatGPTRuntime()
         let temporaryHome = try createTemporaryLoginHome()
         var connectedAccountKey: String?
         var operationError: (any Error)?
@@ -959,25 +950,15 @@ actor CodexAuthService {
         return executable
     }
 
-    private func resolveChatGPTRuntime(
-        requireCodex: Bool,
-        requireNode: Bool
-    ) async throws -> ChatGPTRuntime {
+    private func resolveChatGPTRuntime() async throws -> ChatGPTRuntime {
         #if DEBUG
         if let codexOverride = environment["CODEX_SWITCH_CODEX_EXECUTABLE"],
            FileManager.default.isExecutableFile(atPath: codexOverride) {
             return ChatGPTRuntime(
-                codexPath: codexOverride,
-                nodePath: resolveNodeExecutable(in: nil)
+                codexPath: codexOverride
             )
         }
         #endif
-
-        // API 갱신은 사용자가 이미 지정한 Node/PATH를 ChatGPT 번들보다 먼저 따른다.
-        if !requireCodex,
-           let nodePath = resolveNodeExecutable(in: nil) {
-            return ChatGPTRuntime(codexPath: nil, nodePath: nodePath)
-        }
 
         #if DEBUG
         let userExecutablesDisabled = environment["CODEX_SWITCH_DISABLE_USER_EXECUTABLES"] == "1"
@@ -986,12 +967,10 @@ actor CodexAuthService {
         #endif
 
         // 사용자가 설치한 공식 Codex CLI가 있으면 ChatGPT 앱보다 먼저 사용한다.
-        if requireCodex,
-           !userExecutablesDisabled,
+        if !userExecutablesDisabled,
            let codexCLIPath = resolveUserExecutable(named: "codex") {
             return ChatGPTRuntime(
-                codexPath: codexCLIPath,
-                nodePath: resolveNodeExecutable(in: nil)
+                codexPath: codexCLIPath
             )
         }
 
@@ -1031,21 +1010,16 @@ actor CodexAuthService {
                 .appendingPathComponent("Contents", isDirectory: true)
                 .appendingPathComponent("Resources", isDirectory: true)
             let codexPath = resourcesURL.appendingPathComponent("codex").path
-            let nodePath = resolveNodeExecutable(in: resourcesURL)
-            guard !requireCodex || FileManager.default.isExecutableFile(atPath: codexPath),
-                  !requireNode || nodePath != nil else {
+            guard FileManager.default.isExecutableFile(atPath: codexPath) else {
                 continue
             }
 
             switch Self.validateChatGPTBundle(
-                at: appURL,
-                requireCodex: requireCodex,
-                requireNode: requireNode
+                at: appURL
             ) {
             case .trusted:
                 return ChatGPTRuntime(
-                    codexPath: requireCodex ? codexPath : nil,
-                    nodePath: nodePath
+                    codexPath: codexPath
                 )
             case .invalid:
                 continue
@@ -1054,42 +1028,8 @@ actor CodexAuthService {
 
         // 실행 경로가 없어도 helper를 실행해 codex-auth의 원래 오류를 그대로 전달한다.
         return ChatGPTRuntime(
-            codexPath: nil,
-            nodePath: resolveNodeExecutable(in: nil)
+            codexPath: nil
         )
-    }
-
-    private func resolveNodeExecutable(in resourcesURL: URL?) -> String? {
-        var candidates: [String] = []
-        #if DEBUG
-        if let override = environment["CODEX_SWITCH_NODE_EXECUTABLE"], !override.isEmpty {
-            if let resolved = resolveExecutableReference(override) {
-                candidates.append(resolved)
-            }
-        }
-        #endif
-        if let override = environment["CODEX_AUTH_NODE_EXECUTABLE"], !override.isEmpty,
-           let resolved = resolveExecutableReference(override) {
-            candidates.append(resolved)
-        }
-        if let resourcesURL {
-            candidates.append(
-                resourcesURL
-                    .appendingPathComponent("cua_node/bin/node", isDirectory: false)
-                    .path
-            )
-        }
-        if let systemNode = resolveUserExecutable(named: "node") {
-            candidates.append(systemNode)
-        }
-        return candidates.first(where: FileManager.default.isExecutableFile(atPath:))
-    }
-
-    private func resolveExecutableReference(_ reference: String) -> String? {
-        if reference.contains("/") {
-            return FileManager.default.isExecutableFile(atPath: reference) ? reference : nil
-        }
-        return resolveUserExecutable(named: reference)
     }
 
     private func resolveUserExecutable(named name: String) -> String? {
@@ -1179,11 +1119,9 @@ actor CodexAuthService {
         return result
     }
 
-    // 번들, 실제 Codex, Node에 OpenAI 지정 requirement를 각각 적용한다.
+    // 로그인에 사용하는 번들과 실제 Codex에 OpenAI 지정 requirement를 적용한다.
     private static func validateChatGPTBundle(
-        at appURL: URL,
-        requireCodex: Bool,
-        requireNode: Bool
+        at appURL: URL
     ) -> ChatGPTValidation {
         guard Bundle(url: appURL)?.bundleIdentifier == "com.openai.codex",
               let appExecutableURL = Bundle(url: appURL)?.executableURL,
@@ -1197,23 +1135,14 @@ actor CodexAuthService {
             .appendingPathComponent("Contents", isDirectory: true)
             .appendingPathComponent("Resources", isDirectory: true)
         let codexURL = resourcesURL.appendingPathComponent("codex", isDirectory: false)
-        let nodeURL = resourcesURL.appendingPathComponent("cua_node/bin/node", isDirectory: false)
         var requiredFiles: [(url: URL, identifier: String)] = [
             (appURL, "com.openai.codex")
         ]
 
-        if requireCodex {
-            guard isRegularFileWithoutSymlink(codexURL), isContained(codexURL, in: appURL) else {
-                return .invalid
-            }
-            requiredFiles.append((codexURL, "codex"))
+        guard isRegularFileWithoutSymlink(codexURL), isContained(codexURL, in: appURL) else {
+            return .invalid
         }
-        if requireNode {
-            guard isRegularFileWithoutSymlink(nodeURL), isContained(nodeURL, in: appURL) else {
-                return .invalid
-            }
-            requiredFiles.append((nodeURL, "node"))
-        }
+        requiredFiles.append((codexURL, "codex"))
 
         return requiredFiles.allSatisfy {
             validatesOpenAISignature(at: $0.url, identifier: $0.identifier)
