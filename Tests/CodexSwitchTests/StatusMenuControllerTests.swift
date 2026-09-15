@@ -4,6 +4,67 @@ import XCTest
 
 @MainActor
 final class StatusMenuControllerTests: XCTestCase {
+    // 실제 NSMenu 하위 항목이 현재 계정 표시와 작업 상태를 반영하고 상위 뷰를 보존한다.
+    func testNativeAccountSubmenusTrackCurrentRegistryAndBusyState() async throws {
+        _ = NSApplication.shared
+        let previousMenu = NSApp.mainMenu
+        let suite = "NativeAccountMenuTests-\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defaults.set(false, forKey: "autoRefreshEnabled")
+        let store = AccountStore(userDefaults: defaults, resetCreditLoader: { _ in [] })
+        let data = try JSONSerialization.data(withJSONObject: [
+            "schema_version": 3, "active_account_key": "account-0",
+            "accounts": (0..<10).map { ["account_key": "account-\($0)", "email": "account\($0)@example.com"] }
+        ])
+        let registry = try JSONDecoder().decode(AccountRegistry.self, from: data)
+        store.applyPreviewRegistry(registry)
+        let controller = StatusMenuController(store: store, updateStore: UpdateStore())
+        defer {
+            controller.stop()
+            NSApp.mainMenu = previousMenu
+            defaults.removePersistentDomain(forName: suite)
+        }
+        controller.menuWillOpen(controller.menu)
+        let switching = try XCTUnwrap(controller.menu.items.first { $0.title == "계정 변경" }?.submenu)
+        let removing = try XCTUnwrap(controller.menu.items.first { $0.title == "계정 제거" }?.submenu)
+        XCTAssertEqual(switching.numberOfItems, 10)
+        XCTAssertEqual(removing.numberOfItems, 10)
+        XCTAssertTrue(switching.items.allSatisfy { $0.view == nil && $0.target === controller })
+        XCTAssertEqual(switching.items[0].state, .on)
+        XCTAssertFalse(switching.items[0].isEnabled)
+        XCTAssertTrue(switching.items[1].isEnabled)
+        XCTAssertTrue(removing.items[0].isEnabled)
+        let firstOption = switching.items[0]
+        controller.menuWillOpen(switching)
+        controller.menuDidClose(switching)
+        XCTAssertNotNil(controller.menu.items.first?.view)
+
+        XCTAssertTrue(store.prepareForUpdateRestart())
+        // 실제 관찰 경로로 상태가 바뀌는지 확인한다. 직접 갱신 메서드는 호출하지 않는다.
+        try await Task.sleep(for: .milliseconds(50))
+        XCTAssertTrue(switching.items.allSatisfy { !$0.isEnabled })
+        XCTAssertTrue(removing.items.allSatisfy { !$0.isEnabled })
+        store.cancelUpdateRestart()
+        try await Task.sleep(for: .milliseconds(50))
+        XCTAssertTrue(switching.items[1].isEnabled)
+        XCTAssertTrue(firstOption === switching.items[0])
+
+        // 활성 계정이 없는 단일 계정도 최초 전환 대상으로 사용할 수 있다.
+        store.applyPreviewRegistry(AccountRegistry(schemaVersion: 3, activeAccountKey: nil, api: nil,
+                                                  accounts: [registry.accounts[0]]))
+        controller.menuWillOpen(switching)
+        XCTAssertEqual(switching.numberOfItems, 1)
+        XCTAssertEqual(switching.items[0].state, .off)
+        XCTAssertTrue(switching.items[0].isEnabled)
+        store.applyPreviewRegistry(.empty)
+        controller.menuWillOpen(controller.menu)
+        XCTAssertTrue(switching.items.isEmpty)
+        XCTAssertFalse(controller.menu.items.first { $0.title == "계정 변경" }!.isEnabled)
+        // 사라진 계정의 과거 항목을 호출해도 실제 계정 작업을 시작하지 않는다.
+        NSApp.sendAction(try XCTUnwrap(firstOption.action), to: controller, from: firstOption)
+        XCTAssertFalse(store.isBusy)
+    }
+
     // 작업 중 열었던 메뉴에서도 작업 종료 후 단축키가 살아 있고 설정 창은 재사용한다.
     func testCommandsUseCurrentStateAndReuseSettingsWindow() async throws {
         _ = NSApplication.shared

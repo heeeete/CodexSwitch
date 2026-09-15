@@ -5,6 +5,9 @@ import SwiftUI
 @MainActor final class AccountStore: ObservableObject {
     let isRestartingForUpdate = false
     let isBusy = false
+    let isConnecting = false
+    let accounts: [AccountListItem] = []
+    let activeAccountKey: String? = nil
     init() {
         Task {
             try? await Task.sleep(for: .seconds(2))
@@ -33,6 +36,10 @@ import SwiftUI
     func cancelUpdateRestart() {}
     func loadLocalAccounts() async {}
     func quit() { NSApp.terminate(nil) }
+    func switchAccount(to item: AccountListItem) {}
+    func removeAccount(_ item: AccountListItem) {}
+    func connectAccount() {}
+    func cancelConnection() {}
 }
 
 // 테스트에서는 Sparkle나 실제 계정을 시작하지 않으며 메뉴 생성 경로를 유지한다.
@@ -43,7 +50,6 @@ import SwiftUI
 struct MenuContentView: View {
     let store: AccountStore
     let updateStore: UpdateStore
-    var showSettings: (() -> Void)? = nil
     var body: some View { Text("Startup test") }
 }
 

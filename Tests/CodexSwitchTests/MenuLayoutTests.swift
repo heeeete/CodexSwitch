@@ -197,7 +197,7 @@ final class MenuLayoutTests: XCTestCase {
     }
 
     // 활성 키가 없거나 오래돼도 첫 저장 계정을 현재 계정으로 잘못 표시하지 않는다.
-    func testMissingActiveAccountStillRendersAccountChangeCommand() throws {
+    func testMissingActiveAccountRendersCompactSummary() throws {
         for activeAccountKey: Any in [NSNull(), "missing-account"] {
             let registryData = try JSONSerialization.data(withJSONObject: [
                 "schema_version": 3,
@@ -221,7 +221,8 @@ final class MenuLayoutTests: XCTestCase {
 
             let hostingView = NSHostingView(rootView: MenuContentView(store: store))
             XCTAssertEqual(hostingView.fittingSize.width, 372, accuracy: 1)
-            XCTAssertGreaterThan(hostingView.fittingSize.height, 220)
+            // 계정 명령은 별도 NSMenu 항목이므로 요약 뷰에는 헤더와 토글만 남는다.
+            XCTAssertGreaterThan(hostingView.fittingSize.height, 100)
             XCTAssertLessThan(hostingView.fittingSize.height, 500)
         }
     }
@@ -263,146 +264,6 @@ final class MenuLayoutTests: XCTestCase {
         hostingView.cacheDisplay(in: hostingView.bounds, to: bitmap)
         guard let pngData = bitmap.representation(using: .png, properties: [:]) else {
             XCTFail("긴 안내 메뉴 렌더를 PNG로 변환하지 못했습니다.")
-            return
-        }
-        try pngData.write(to: URL(fileURLWithPath: snapshotPath), options: .atomic)
-    }
-
-    // 제거 hover 팝업은 연결된 계정과 현재 계정 표시를 유한한 크기로 렌더링한다.
-    func testAccountRemovalPopoverRendersConnectedAccounts() throws {
-        let registry = try JSONDecoder().decode(
-            AccountRegistry.self,
-            from: Data(Self.accountRegistryJSON.utf8)
-        )
-        let accounts = registry.accounts.map { AccountListItem(account: $0) }
-        let hostingView = NSHostingView(
-            rootView: AccountPickerPopover(
-                action: .removeAccount,
-                accounts: accounts,
-                activeAccountKey: registry.activeAccountKey,
-                isDisabled: false,
-                selectAction: { _ in }
-            )
-        )
-        let fittingSize = hostingView.fittingSize
-        XCTAssertEqual(fittingSize.width, 264, accuracy: 1)
-        XCTAssertGreaterThan(fittingSize.height, 80)
-        XCTAssertLessThan(fittingSize.height, 200)
-
-        guard let snapshotPath = ProcessInfo.processInfo.environment["CODEXSWITCH_REMOVAL_SNAPSHOT_PATH"],
-              !snapshotPath.isEmpty else {
-            return
-        }
-
-        hostingView.frame = NSRect(origin: .zero, size: fittingSize)
-        hostingView.layoutSubtreeIfNeeded()
-        guard let bitmap = hostingView.bitmapImageRepForCachingDisplay(in: hostingView.bounds) else {
-            XCTFail("계정 제거 팝업 렌더 버퍼를 만들지 못했습니다.")
-            return
-        }
-        hostingView.cacheDisplay(in: hostingView.bounds, to: bitmap)
-        guard let pngData = bitmap.representation(using: .png, properties: [:]) else {
-            XCTFail("계정 제거 팝업 렌더를 PNG로 변환하지 못했습니다.")
-            return
-        }
-        try pngData.write(to: URL(fileURLWithPath: snapshotPath), options: .atomic)
-    }
-
-    // 변경 팝업은 제거 팝업과 같은 폭·행 구조를 유지한다.
-    func testAccountSwitchPopoverMatchesRemovalLayout() throws {
-        let registry = try JSONDecoder().decode(
-            AccountRegistry.self,
-            from: Data(Self.accountRegistryJSON.utf8)
-        )
-        let accounts = registry.accounts.map { AccountListItem(account: $0) }
-        let switchView = NSHostingView(
-            rootView: AccountPickerPopover(
-                action: .switchAccount,
-                accounts: accounts,
-                activeAccountKey: registry.activeAccountKey,
-                isDisabled: false,
-                selectAction: { _ in }
-            )
-        )
-        let removalView = NSHostingView(
-            rootView: AccountPickerPopover(
-                action: .removeAccount,
-                accounts: accounts,
-                activeAccountKey: registry.activeAccountKey,
-                isDisabled: false,
-                selectAction: { _ in }
-            )
-        )
-
-        XCTAssertEqual(switchView.fittingSize.width, 264, accuracy: 1)
-        XCTAssertEqual(switchView.fittingSize.width, removalView.fittingSize.width, accuracy: 1)
-        XCTAssertEqual(switchView.fittingSize.height, removalView.fittingSize.height, accuracy: 3)
-
-        guard let snapshotPath = ProcessInfo.processInfo.environment[
-            "CODEXSWITCH_SWITCH_SNAPSHOT_PATH"
-        ], !snapshotPath.isEmpty else {
-            return
-        }
-        switchView.frame = NSRect(origin: .zero, size: switchView.fittingSize)
-        switchView.layoutSubtreeIfNeeded()
-        guard let bitmap = switchView.bitmapImageRepForCachingDisplay(in: switchView.bounds) else {
-            XCTFail("계정 변경 팝업 렌더 버퍼를 만들지 못했습니다.")
-            return
-        }
-        switchView.cacheDisplay(in: switchView.bounds, to: bitmap)
-        guard let pngData = bitmap.representation(using: .png, properties: [:]) else {
-            XCTFail("계정 변경 팝업 렌더를 PNG로 변환하지 못했습니다.")
-            return
-        }
-        try pngData.write(to: URL(fileURLWithPath: snapshotPath), options: .atomic)
-    }
-
-    // 계정이 많아도 제거 팝업은 화면 밖으로 커지지 않고 내부 목록만 스크롤한다.
-    func testAccountRemovalPopoverCapsLongAccountList() throws {
-        let accountObjects: [[String: Any]] = (0..<10).map { index in
-            [
-                "account_key": "account-\(index)",
-                "email": "account\(index)@example.com",
-                "alias": "Account \(index + 1)",
-                "plan": "pro",
-                "auth_mode": "chatgpt"
-            ]
-        }
-        let registryData = try JSONSerialization.data(withJSONObject: [
-            "schema_version": 3,
-            "active_account_key": "account-0",
-            "accounts": accountObjects
-        ])
-        let registry = try JSONDecoder().decode(AccountRegistry.self, from: registryData)
-        let hostingView = NSHostingView(
-            rootView: AccountPickerPopover(
-                action: .removeAccount,
-                accounts: registry.accounts.map { AccountListItem(account: $0) },
-                activeAccountKey: registry.activeAccountKey,
-                isDisabled: false,
-                selectAction: { _ in }
-            )
-        )
-
-        let fittingSize = hostingView.fittingSize
-        XCTAssertEqual(fittingSize.width, 264, accuracy: 1)
-        XCTAssertGreaterThan(fittingSize.height, 250)
-        XCTAssertLessThan(fittingSize.height, 330)
-
-        guard let snapshotPath = ProcessInfo.processInfo.environment["CODEXSWITCH_LONG_REMOVAL_SNAPSHOT_PATH"],
-              !snapshotPath.isEmpty else {
-            return
-        }
-
-        hostingView.frame = NSRect(origin: .zero, size: fittingSize)
-        hostingView.layoutSubtreeIfNeeded()
-        guard let bitmap = hostingView.bitmapImageRepForCachingDisplay(in: hostingView.bounds) else {
-            XCTFail("긴 계정 제거 팝업 렌더 버퍼를 만들지 못했습니다.")
-            return
-        }
-        hostingView.cacheDisplay(in: hostingView.bounds, to: bitmap)
-        guard let pngData = bitmap.representation(using: .png, properties: [:]) else {
-            XCTFail("긴 계정 제거 팝업 렌더를 PNG로 변환하지 못했습니다.")
             return
         }
         try pngData.write(to: URL(fileURLWithPath: snapshotPath), options: .atomic)

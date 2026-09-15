@@ -1,25 +1,13 @@
 import SwiftUI
 
-// 메뉴바 창 전체를 구성하고 상태별 화면을 분기한다.
+// 기본 메뉴 위쪽의 계정 요약과 설정 토글을 구성한다.
 struct MenuContentView: View {
-    private enum AccountPopoverKind: Equatable {
-        case switchAccount
-        case removeAccount
-    }
-
     @ObservedObject var store: AccountStore
     @ObservedObject var updateStore: UpdateStore = UpdateStore()
-    var showSettings: (() -> Void)? = nil
     @Environment(\.colorScheme) private var colorScheme
     @State private var refreshIsHovered = false
     @State private var autoRefreshRowIsHovered = false
     @State private var restartRowIsHovered = false
-    @State private var presentedAccountPopover: AccountPopoverKind?
-    @State private var hoveredAccountPopoverRow: AccountPopoverKind?
-    @State private var hoveredAccountPopover: AccountPopoverKind?
-    @State private var accountPopoverSuppressesHover = false
-    @State private var accountPopoverCloseTask: Task<Void, Never>?
-
     var body: some View {
         VStack(spacing: 0) {
             header
@@ -38,22 +26,6 @@ struct MenuContentView: View {
         // 메뉴 창의 기본 재질을 그대로 사용하고 별도 배경을 겹치지 않는다.
         .task {
             await store.loadLocalAccounts()
-        }
-        .onChange(of: store.isBusy) { _, isBusy in
-            if isBusy {
-                dismissAccountPopover()
-            }
-        }
-        .onChange(of: store.accounts.map(\.id)) { _, accountIDs in
-            if accountIDs.isEmpty {
-                dismissAccountPopover()
-            } else if presentedAccountPopover == .switchAccount,
-                      !hasAccountSwitchTarget {
-                dismissAccountPopover()
-            }
-        }
-        .onDisappear {
-            dismissAccountPopover()
         }
     }
 
@@ -229,25 +201,6 @@ struct MenuContentView: View {
             .padding(.horizontal, 6)
             .padding(.vertical, 6)
 
-            sectionDivider
-                .padding(.horizontal, 8)
-
-            VStack(spacing: 0) {
-                // 같은 계정 명령끼리는 선 없이 묶고 설정 그룹 앞에서만 구분한다.
-                accountSwitchRow
-                accountConnectionRow
-                accountRemovalRow
-
-                sectionDivider
-                    .padding(.horizontal, 9)
-                    .padding(.vertical, 5)
-
-                settingsRow
-                quitRow
-            }
-            .padding(.horizontal, 6)
-            .padding(.vertical, 5)
-
             // 준비된 업데이트는 버전 번호 없이 하단에서 재시작을 안내한다.
             if updateStore.status != .idle {
                 sectionDivider
@@ -255,124 +208,6 @@ struct MenuContentView: View {
                 UpdateNoticeView(updateStore: updateStore, isBusy: store.isBusy)
             }
         }
-    }
-
-    // 계정 변경은 제거와 같은 hover 팝업에서 대상을 바로 선택한다.
-    private var accountSwitchRow: some View {
-        MenuCommandRow(
-            isDisabled: store.isBusy || !hasAccountSwitchTarget,
-            action: { presentAccountPopover(.switchAccount) }
-        ) {
-            MenuCommandLabel(
-                title: "계정 변경",
-                systemImage: "person.2",
-                trailingSystemImage: "chevron.right"
-            )
-        }
-        .onHover { hovering in
-            setAccountPopoverRowHovered(.switchAccount, hovering: hovering)
-        }
-        .popover(
-            isPresented: accountPopoverBinding(for: .switchAccount),
-            attachmentAnchor: .rect(.bounds),
-            arrowEdge: .leading
-        ) {
-            AccountPickerPopover(
-                action: .switchAccount,
-                accounts: store.accounts,
-                activeAccountKey: store.activeAccountKey,
-                isDisabled: store.isBusy,
-                selectAction: selectAccountForSwitch
-            )
-            .onHover { hovering in
-                setAccountPopoverHovered(.switchAccount, hovering: hovering)
-            }
-            .onDisappear {
-                clearHoveredAccountPopover(.switchAccount)
-            }
-        }
-        .help("계정 목록을 열어 변경할 계정 선택")
-    }
-
-    // 계정 추가는 다른 메뉴 명령과 같은 기준선과 hover 영역을 사용한다.
-    private var accountConnectionRow: some View {
-        MenuCommandRow(
-            isDisabled: store.isBusy && !store.isConnecting,
-            action: {
-                if store.isConnecting {
-                    store.cancelConnection()
-                } else {
-                    store.connectAccount()
-                }
-            }
-        ) {
-            if store.isConnecting {
-                MenuCommandLabel(title: "추가 취소", systemImage: "xmark.circle")
-            } else {
-                MenuCommandLabel(
-                    title: "계정 추가",
-                    systemImage: "person.badge.plus",
-                    trailingSystemImage: "chevron.right"
-                )
-            }
-        }
-        .help(store.isConnecting ? "ChatGPT 계정 추가 취소" : "새 ChatGPT 계정 추가")
-    }
-
-    // 제거도 같은 계정 팝업을 사용하고 선택 뒤 기존 확인창으로 넘긴다.
-    private var accountRemovalRow: some View {
-        MenuCommandRow(
-            isDisabled: store.isBusy || store.accounts.isEmpty,
-            action: { presentAccountPopover(.removeAccount) }
-        ) {
-            MenuCommandLabel(
-                title: "계정 제거",
-                systemImage: "person.badge.minus",
-                trailingSystemImage: "chevron.right"
-            )
-        }
-        .onHover { hovering in
-            setAccountPopoverRowHovered(.removeAccount, hovering: hovering)
-        }
-        .popover(
-            isPresented: accountPopoverBinding(for: .removeAccount),
-            attachmentAnchor: .rect(.bounds),
-            arrowEdge: .leading
-        ) {
-            AccountPickerPopover(
-                action: .removeAccount,
-                accounts: store.accounts,
-                activeAccountKey: store.activeAccountKey,
-                isDisabled: store.isBusy,
-                selectAction: selectAccountForRemoval
-            )
-            .onHover { hovering in
-                setAccountPopoverHovered(.removeAccount, hovering: hovering)
-            }
-            .onDisappear {
-                clearHoveredAccountPopover(.removeAccount)
-            }
-        }
-        .help("계정 목록을 열어 제거할 계정 선택")
-    }
-
-    // 메뉴바 전용 앱에서도 설정 창을 앞으로 가져오고 같은 창을 다시 사용한다.
-    private var settingsRow: some View {
-        MenuCommandRow(isDisabled: store.isRestartingForUpdate, action: {
-            showSettings?()
-        }) {
-            MenuCommandLabel(title: "설정…", systemImage: "gearshape", trailingText: "⌘,")
-        }
-        .keyboardShortcut(",", modifiers: .command)
-        .help("CodexSwitch 설정 열기")
-    }
-
-    private var quitRow: some View {
-        MenuCommandRow(isDisabled: store.isBusy, action: store.quit) {
-            MenuCommandLabel(title: "종료", systemImage: "power", trailingText: "⌘Q")
-        }
-        .keyboardShortcut("q", modifiers: .command)
-        .help("CodexSwitch 종료")
     }
 
     private var headerSubtitle: String {
@@ -384,270 +219,12 @@ struct MenuContentView: View {
         Divider()
     }
 
-    // 활성 계정이 없을 때는 저장 계정 하나만 있어도 최초 선택 대상으로 인정한다.
-    private var hasAccountSwitchTarget: Bool {
-        store.accounts.contains {
-            $0.account.accountKey != store.activeAccountKey
-        }
-    }
-
-    private func accountPopoverBinding(for kind: AccountPopoverKind) -> Binding<Bool> {
-        Binding(
-            get: { presentedAccountPopover == kind },
-            set: { isPresented in
-                if isPresented {
-                    presentedAccountPopover = kind
-                } else if presentedAccountPopover == kind {
-                    presentedAccountPopover = nil
-                }
-            }
-        )
-    }
-
-    // 클릭과 hover 진입은 해당 계정 목록 하나만 열어 두 팝업의 동시 표시를 막는다.
-    private func presentAccountPopover(_ kind: AccountPopoverKind) {
-        guard !store.isBusy, accountPopoverIsAvailable(kind) else { return }
-        accountPopoverCloseTask?.cancel()
-        accountPopoverSuppressesHover = false
-        presentedAccountPopover = kind
-    }
-
-    private func setAccountPopoverRowHovered(
-        _ kind: AccountPopoverKind,
-        hovering: Bool
-    ) {
-        if hovering {
-            accountPopoverCloseTask?.cancel()
-            accountPopoverSuppressesHover = false
-            hoveredAccountPopoverRow = kind
-            presentedAccountPopover = kind
-        } else if hoveredAccountPopoverRow == kind {
-            hoveredAccountPopoverRow = nil
-        }
-        reconcileAccountPopoverHover()
-    }
-
-    private func setAccountPopoverHovered(
-        _ kind: AccountPopoverKind,
-        hovering: Bool
-    ) {
-        if hovering {
-            accountPopoverCloseTask?.cancel()
-            hoveredAccountPopover = kind
-        } else if hoveredAccountPopover == kind {
-            hoveredAccountPopover = nil
-        }
-        reconcileAccountPopoverHover()
-    }
-
-    private func clearHoveredAccountPopover(_ kind: AccountPopoverKind) {
-        if hoveredAccountPopover == kind {
-            hoveredAccountPopover = nil
-        }
-        reconcileAccountPopoverHover()
-    }
-
-    // 행에서 팝업으로 이동하는 짧은 간격 동안에는 기존 280ms 닫힘 지연을 유지한다.
-    private func reconcileAccountPopoverHover() {
-        accountPopoverCloseTask?.cancel()
-
-        guard let presentedAccountPopover,
-              !store.isBusy,
-              accountPopoverIsAvailable(presentedAccountPopover),
-              !accountPopoverSuppressesHover else {
-            self.presentedAccountPopover = nil
-            return
-        }
-
-        if hoveredAccountPopoverRow == presentedAccountPopover
-            || hoveredAccountPopover == presentedAccountPopover {
-            return
-        }
-
-        let closingKind = presentedAccountPopover
-        accountPopoverCloseTask = Task { @MainActor in
-            try? await Task.sleep(for: .milliseconds(280))
-            guard !Task.isCancelled,
-                  self.presentedAccountPopover == closingKind,
-                  hoveredAccountPopoverRow != closingKind,
-                  hoveredAccountPopover != closingKind else { return }
-            self.presentedAccountPopover = nil
-        }
-    }
-
-    private func accountPopoverIsAvailable(_ kind: AccountPopoverKind) -> Bool {
-        switch kind {
-        case .switchAccount:
-            return hasAccountSwitchTarget
-        case .removeAccount:
-            return !store.accounts.isEmpty
-        }
-    }
-
-    // 변경 대상 선택은 팝업을 먼저 닫은 뒤 기존 안전한 전환 흐름으로 바로 넘긴다.
-    private func selectAccountForSwitch(_ item: AccountListItem) {
-        guard item.account.accountKey != store.activeAccountKey else { return }
-        closeAccountPopoverAfterSelection()
-        store.switchAccount(to: item)
-    }
-
-    // 팝업을 먼저 닫은 뒤 독립적인 app-modal 확인창을 열어 메뉴바 창 닫힘과 액션 유실을 막는다.
-    private func selectAccountForRemoval(_ item: AccountListItem) {
-        closeAccountPopoverAfterSelection()
-
-        Task { @MainActor in
-            await Task.yield()
-            guard !store.isBusy else { return }
-            guard SystemConfirmationAlert.present(
-                title: "이 계정을 이 Mac에서 제거할까요?",
-                message: removalMessage(for: item),
-                confirmTitle: "제거",
-                confirmIsDestructive: true
-            ) else { return }
-            store.removeAccount(item)
-        }
-    }
-
-    private func closeAccountPopoverAfterSelection() {
-        accountPopoverCloseTask?.cancel()
-        accountPopoverSuppressesHover = true
-        presentedAccountPopover = nil
-        hoveredAccountPopover = nil
-    }
-
-    private func dismissAccountPopover() {
-        accountPopoverCloseTask?.cancel()
-        presentedAccountPopover = nil
-        hoveredAccountPopover = nil
-        hoveredAccountPopoverRow = nil
-        accountPopoverSuppressesHover = false
-    }
-
-    private func removalMessage(for item: AccountListItem) -> String {
-        let name = item.account.displayName
-        let isActive = item.account.accountKey == store.activeAccountKey
-        let localOnly = "ChatGPT 계정 자체는 삭제되지 않습니다."
-
-        if isActive, store.accounts.count == 1 {
-            return "“\(name)”은 마지막 계정입니다. 제거하면 ChatGPT를 닫고 이 Mac의 Codex 인증을 해제합니다. \(localOnly)"
-        }
-        if isActive {
-            return "“\(name)”은 현재 사용 중인 계정입니다. 제거하면 ChatGPT를 안전하게 닫고 남은 계정으로 전환합니다. \(localOnly)"
-        }
-        return "이 Mac에 저장된 “\(name)”의 인증 정보만 제거합니다. \(localOnly)"
-    }
-
     private func noticeTextColor(for style: AccountStore.NoticeStyle) -> Color {
         switch style {
         case .success: CodexSwitchDesign.successText(for: colorScheme)
         case .warning: CodexSwitchDesign.warningText(for: colorScheme)
         case .error: CodexSwitchDesign.errorText(for: colorScheme)
         }
-    }
-}
-
-// 명령마다 다른 SF Symbol 폭을 고정해 아이콘과 텍스트 열을 맞춘다.
-private struct MenuCommandLabel: View {
-    let title: String
-    let systemImage: String
-    var trailingText: String?
-    var trailingSystemImage: String?
-
-    init(
-        title: String,
-        systemImage: String,
-        trailingText: String? = nil,
-        trailingSystemImage: String? = nil
-    ) {
-        self.title = title
-        self.systemImage = systemImage
-        self.trailingText = trailingText
-        self.trailingSystemImage = trailingSystemImage
-    }
-
-    var body: some View {
-        HStack(spacing: 8) {
-            Image(systemName: systemImage)
-                .frame(width: 16, alignment: .center)
-
-            Text(title)
-
-            Spacer(minLength: 8)
-
-            if let trailingSystemImage {
-                Image(systemName: trailingSystemImage)
-                    .font(.system(size: 9, weight: .semibold))
-                    .foregroundStyle(Color.secondary)
-            }
-
-            if let trailingText {
-                Text(trailingText)
-                    .font(.system(size: 12))
-                    .foregroundStyle(Color.secondary)
-            }
-        }
-        .frame(maxWidth: .infinity)
-        .font(.system(size: 13))
-        .foregroundStyle(Color.primary)
-    }
-}
-
-// 메뉴 명령은 전체 행을 클릭·hover 영역으로 사용한다.
-private struct MenuCommandRow<LabelContent: View>: View {
-    let isDisabled: Bool
-    let action: () -> Void
-    let label: () -> LabelContent
-
-    @Environment(\.colorScheme) private var colorScheme
-    @State private var isHovered = false
-
-    init(
-        isDisabled: Bool,
-        action: @escaping () -> Void,
-        @ViewBuilder label: @escaping () -> LabelContent
-    ) {
-        self.isDisabled = isDisabled
-        self.action = action
-        self.label = label
-    }
-
-    var body: some View {
-        Button(action: action) {
-            HStack(spacing: 9) {
-                label()
-                Spacer(minLength: 8)
-            }
-            .frame(maxWidth: .infinity, minHeight: 26, alignment: .leading)
-            .padding(.horizontal, 9)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(
-            MenuCommandButtonStyle(
-                isHovered: isHovered && !isDisabled,
-                colorScheme: colorScheme
-            )
-        )
-        .onHover { hovering in
-            isHovered = hovering
-        }
-        .disabled(isDisabled)
-    }
-}
-
-private struct MenuCommandButtonStyle: ButtonStyle {
-    let isHovered: Bool
-    let colorScheme: ColorScheme
-
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .background(
-                configuration.isPressed
-                    ? CodexSwitchDesign.pressedBackground(for: colorScheme)
-                    : isHovered
-                        ? CodexSwitchDesign.hoverBackground(for: colorScheme)
-                        : Color.clear,
-                in: RoundedRectangle(cornerRadius: 7, style: .continuous)
-            )
     }
 }
 
