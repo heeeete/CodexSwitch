@@ -60,7 +60,6 @@ Usage is based on recent records. After switching accounts, “No usage data” 
 ## Data and Accounts
 
 - Account information is stored on this Mac and is not sent to a separate CodexSwitch server.
-- Reset credits are requested directly from OpenAI using your saved sign-in credentials.
 - Existing sign-in information is backed up locally before switching accounts.
 - Avoid changing the same accounts in other tools while CodexSwitch is switching or removing an account.
 
