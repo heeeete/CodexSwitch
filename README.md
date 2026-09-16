@@ -53,6 +53,11 @@ once that operation finishes.
 
 Removing an account only deletes its Codex authentication data on this Mac. It does not delete your actual ChatGPT account.
 
+After switching accounts, restart your client to use the new account:
+
+- **Desktop app** — By default, CodexSwitch automatically quits the running ChatGPT app and reopens it with the new account. If you turn off **Open ChatGPT after switching**, reopen the app yourself.
+- **Codex CLI** — Quit any running Codex CLI session and start it again after switching accounts. CLI sessions are not restarted automatically.
+
 ## Usage Data
 
 Usage is based on recent records. After switching accounts, “No usage data” may appear until new usage is recorded.
