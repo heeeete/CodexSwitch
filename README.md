@@ -12,13 +12,6 @@
   </p>
 </div>
 
-<!--
-A screenshot will be displayed here once it is ready.
-<p align="center">
-  <img src="docs/images/codexswitch-menu.png" width="760" alt="CodexSwitch menu">
-</p>
--->
-<img width="1630" height="965" alt="CodexSwitch menu preview" src="https://github.com/user-attachments/assets/8585e61c-0208-42af-a999-28c3016df986" />
 
 
 ## Features
