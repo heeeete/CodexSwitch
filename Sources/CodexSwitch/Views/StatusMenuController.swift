@@ -7,13 +7,14 @@ import SwiftUI
 final class StatusMenuController: NSObject, NSMenuDelegate {
     private let store: AccountStore
     private let updateStore: UpdateStore
-    private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
+    let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
     let menu = NSMenu()
     private let contentItem = NSMenuItem()
     private let switchItem = NSMenuItem(title: "계정 변경", action: nil, keyEquivalent: "")
     private let removeItem = NSMenuItem(title: "계정 제거", action: nil, keyEquivalent: "")
     private let connectionItem = NSMenuItem(title: "계정 추가", action: nil, keyEquivalent: "")
     private var storeObservation: AnyCancellable?
+    private var displayTimer: Timer?
     private(set) var settingsWindow: NSWindow?
 
     init(store: AccountStore, updateStore: UpdateStore) {
@@ -23,7 +24,9 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
         menu.delegate = self
         menu.autoenablesItems = false
         menu.addItem(contentItem)
-        statusItem.button?.image = NSImage(systemSymbolName: "arrow.triangle.2.circlepath", accessibilityDescription: "CodexSwitch")
+        statusItem.button?.image = CodexSwitchIcon.menuBarImage
+        statusItem.button?.imagePosition = .imageLeft
+        statusItem.button?.font = .monospacedDigitSystemFont(ofSize: 12, weight: .regular)
         statusItem.menu = menu
 
         // 계정 명령은 실제 메뉴 항목으로 만들어 하위 메뉴 추적을 macOS에 맡긴다.
@@ -68,6 +71,13 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
                 MainActor.assumeIsolated { self?.refreshAccountMenus() }
             }
         }
+        // 자동 조회를 꺼도 경과 시각과 만료 표시는 갱신하며 네트워크 요청은 하지 않는다.
+        let timer = Timer(timeInterval: 60, repeats: true) { [weak self] _ in
+            MainActor.assumeIsolated { self?.refreshAccountMenus() }
+        }
+        timer.tolerance = 5
+        RunLoop.main.add(timer, forMode: .common)
+        displayTimer = timer
         Task { await store.loadLocalAccounts() }
     }
 
@@ -95,6 +105,21 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
 
     // 계정 구성이 같으면 기존 항목을 유지해 새로고침 중에도 선택 추적을 보존한다.
     func refreshAccountMenus() {
+        let now = Date()
+        let summaries = Dictionary(uniqueKeysWithValues: store.accounts.map {
+            ($0.account.accountKey, AccountUsageSummary(account: $0.account, now: now))
+        })
+        // 현재 계정만 메뉴바에 표시하고, 연결 계정이 없으면 로고만 남긴다.
+        if let active = store.accounts.first(where: { $0.account.accountKey == store.activeAccountKey }),
+           let summary = summaries[active.account.accountKey] {
+            statusItem.button?.title = " " + summary.menuBarText
+            statusItem.button?.toolTip = "\(active.account.displayName)\n\(summary.menuText)"
+            statusItem.button?.setAccessibilityLabel("CodexSwitch, \(summary.menuText)")
+        } else {
+            statusItem.button?.title = ""
+            statusItem.button?.toolTip = "CodexSwitch · 현재 계정 없음"
+            statusItem.button?.setAccessibilityLabel("CodexSwitch, 현재 계정 없음")
+        }
         for (parent, action) in [(switchItem, #selector(switchAccount(_:))), (removeItem, #selector(removeAccount(_:)))] {
             guard let submenu = parent.submenu else { continue }
             // 비활성 부모 아래에서는 자식의 isEnabled도 false이므로 모델로 부모 상태를 먼저 결정한다.
@@ -113,8 +138,9 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
             }
             for (item, account) in zip(submenu.items, store.accounts) {
                 let active = account.account.accountKey == store.activeAccountKey
-                item.title = account.account.displayName
-                item.toolTip = "\(account.account.email) · \(account.account.displayPlan)"
+                let usage = summaries[account.account.accountKey]?.menuText ?? "사용량 정보 없음"
+                item.title = "\(account.account.displayName)    \(usage)"
+                item.toolTip = "\(account.account.email) · \(account.account.displayPlan)\n\(usage)"
                 item.state = active ? .on : .off
                 item.isEnabled = !store.isBusy && (parent === removeItem || !active)
             }
@@ -174,6 +200,7 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
 
     // 앱 수명과 함께 상태바 항목과 소유 창을 정리한다.
     func stop() {
+        displayTimer?.invalidate()
         storeObservation?.cancel()
         menu.cancelTracking()
         settingsWindow?.close()

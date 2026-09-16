@@ -4,6 +4,38 @@ import SwiftUI
 // 앱 번들의 아이콘을 그대로 쓰고 SwiftPM 실행에서는 같은 벡터 마크를 그린다.
 @MainActor
 enum CodexSwitchIcon {
+    // 메뉴바에서는 앱의 교차 곡선만 template 이미지로 그려 시스템 명암에 맞춘다.
+    static let menuBarImage: NSImage = {
+        let image = NSImage(size: NSSize(width: 18, height: 18), flipped: false) { _ in
+            guard let context = NSGraphicsContext.current?.cgContext else { return false }
+            context.saveGState()
+            defer { context.restoreGState() }
+            // 앱 아이콘의 바탕 여백을 걷어내 18pt 안에서 같은 마크를 선명하게 확대한 것이다.
+            context.translateBy(x: -5.4, y: -5.4)
+            context.scaleBy(x: 28.8, y: 28.8)
+            context.setStrokeColor(NSColor.black.cgColor)
+            context.setFillColor(NSColor.black.cgColor)
+            context.setLineWidth(0.065)
+            context.setLineCap(.round)
+            context.move(to: CGPoint(x: 0.29, y: 0.35))
+            context.addCurve(to: CGPoint(x: 0.71, y: 0.65),
+                             control1: CGPoint(x: 0.48, y: 0.35), control2: CGPoint(x: 0.52, y: 0.65))
+            context.strokePath()
+            context.move(to: CGPoint(x: 0.29, y: 0.65))
+            context.addCurve(to: CGPoint(x: 0.71, y: 0.35),
+                             control1: CGPoint(x: 0.48, y: 0.65), control2: CGPoint(x: 0.52, y: 0.35))
+            context.strokePath()
+            for point in [CGPoint(x: 0.27, y: 0.35), CGPoint(x: 0.27, y: 0.65),
+                          CGPoint(x: 0.73, y: 0.35), CGPoint(x: 0.73, y: 0.65)] {
+                context.fillEllipse(in: CGRect(x: point.x - 0.065, y: point.y - 0.065, width: 0.13, height: 0.13))
+            }
+            return true
+        }
+        image.isTemplate = true
+        image.accessibilityDescription = "CodexSwitch"
+        return image
+    }()
+
     static let image: NSImage = {
         if let iconURL = Bundle.main.url(forResource: "CodexSwitch", withExtension: "icns"),
            let bundledIcon = NSImage(contentsOf: iconURL) {
@@ -85,7 +117,7 @@ enum CodexSwitchIcon {
     }
 }
 
-// 메뉴바와 헤더가 같은 앱 아이콘 렌더링을 공유한다.
+// 헤더는 앱 번들과 같은 컬러 아이콘을 사용한다.
 struct CodexSwitchIconView: View {
     let size: CGFloat
 

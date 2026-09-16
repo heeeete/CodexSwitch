@@ -21,8 +21,10 @@ swiftc -parse-as-library -swift-version 6 -DDEBUG -target "$(uname -m)-apple-mac
     "$PROJECT_ROOT/Sources/CodexSwitch/CodexSwitchApp.swift" \
     "$PROJECT_ROOT/Sources/CodexSwitch/Store/AppStartup.swift" \
     "$PROJECT_ROOT/Sources/CodexSwitch/Views/StatusMenuController.swift" \
+    "$PROJECT_ROOT/Sources/CodexSwitch/Views/CodexSwitchIcon.swift" \
     "$PROJECT_ROOT/Sources/CodexSwitch/Views/SystemConfirmationAlert.swift" \
     "$PROJECT_ROOT/Sources/CodexSwitch/Models/AccountModels.swift" \
+    "$PROJECT_ROOT/Sources/CodexSwitch/Models/AccountUsageSummary.swift" \
     "$PROJECT_ROOT/Sources/CodexSwitch/Services/AppInstaller.swift" \
     "$PROJECT_ROOT/Tests/StartupIntegration/StartupFixture.swift" \
     -o "$TEST_APP/Contents/MacOS/StartupTest"

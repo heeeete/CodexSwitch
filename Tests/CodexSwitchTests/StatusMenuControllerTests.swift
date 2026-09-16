@@ -4,6 +4,59 @@ import XCTest
 
 @MainActor
 final class StatusMenuControllerTests: XCTestCase {
+    // 메뉴를 닫아둔 상태에서도 계정 변경·새 데이터가 메뉴바와 기본 하위 메뉴에 반영된다.
+    func testUsageDisplayFollowsAccountAndDataChanges() async throws {
+        _ = NSApplication.shared
+        let previousMenu = NSApp.mainMenu
+        let suite = "StatusUsageTests-\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defaults.set(false, forKey: "autoRefreshEnabled")
+        let store = AccountStore(userDefaults: defaults, resetCreditLoader: { _ in [] })
+        let now = Int64(Date().timeIntervalSince1970)
+        let data = try JSONSerialization.data(withJSONObject: [
+            "schema_version": 3, "active_account_key": "work",
+            "accounts": [
+                ["account_key": "work", "email": "work@example.com", "last_usage_at": now - 10,
+                 "last_usage": ["primary": ["used_percent": 19, "window_minutes": 10_080, "resets_at": now + 100_000]]],
+                ["account_key": "personal", "email": "personal@example.com", "last_usage_at": now - 10_800,
+                 "last_usage": ["primary": ["used_percent": 38, "window_minutes": 10_080, "resets_at": now + 100_000]]]
+            ]
+        ])
+        var registry = try JSONDecoder().decode(AccountRegistry.self, from: data)
+        store.applyPreviewRegistry(registry)
+        let controller = StatusMenuController(store: store, updateStore: UpdateStore())
+        defer {
+            controller.stop()
+            NSApp.mainMenu = previousMenu
+            defaults.removePersistentDomain(forName: suite)
+        }
+        let button = try XCTUnwrap(controller.statusItem.button)
+        XCTAssertEqual(button.title, " 주간 81%")
+        XCTAssertTrue(try XCTUnwrap(button.image).isTemplate)
+        XCTAssertEqual(button.image?.size, NSSize(width: 18, height: 18))
+        let switching = try XCTUnwrap(controller.menu.items.first { $0.title == "계정 변경" }?.submenu)
+        let firstOption = switching.items[0]
+        XCTAssertEqual(firstOption.title, "work@example.com    주간 81% 남음 · 방금")
+        // Store가 방금 파일을 읽었어도 과거 사용량 기록 시각을 보존한다.
+        XCTAssertEqual(switching.items[1].title, "personal@example.com    주간 62% 남음 · 3시간 전")
+        store.applyPreviewRegistry(AccountRegistry(schemaVersion: 3, activeAccountKey: "personal", api: nil,
+                                                  accounts: registry.accounts))
+        try await Task.sleep(for: .milliseconds(50))
+        XCTAssertEqual(button.title, " 주간 62%")
+        XCTAssertEqual(switching.items[1].state, .on)
+        XCTAssertTrue(firstOption === switching.items[0])
+
+        registry.accounts[1].lastUsage = nil
+        store.applyPreviewRegistry(AccountRegistry(schemaVersion: 3, activeAccountKey: "personal", api: nil,
+                                                  accounts: registry.accounts))
+        try await Task.sleep(for: .milliseconds(50))
+        XCTAssertEqual(button.title, " 사용량 —")
+        XCTAssertTrue(switching.items[1].title.hasSuffix("사용량 정보 없음"))
+        store.applyPreviewRegistry(.empty)
+        try await Task.sleep(for: .milliseconds(50))
+        XCTAssertEqual(button.title, "")
+    }
+
     // 실제 NSMenu 하위 항목이 현재 계정 표시와 작업 상태를 반영하고 상위 뷰를 보존한다.
     func testNativeAccountSubmenusTrackCurrentRegistryAndBusyState() async throws {
         _ = NSApplication.shared
