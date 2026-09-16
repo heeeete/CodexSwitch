@@ -11,8 +11,13 @@ mkdir -p "$SOURCE_APP/Contents/MacOS" "$TEST_ROOT/Applications"
 app_pid=""
 trap 'test -z "$app_pid" || kill "$app_pid" 2>/dev/null || true' EXIT
 
+# 통합 테스트 앱에도 언어 리소스를 포함한다.
+mkdir -p "$SOURCE_APP/Contents/Resources"
+cp -R "$PROJECT_ROOT/Sources/CodexSwitch/Resources/"*.lproj "$SOURCE_APP/Contents/Resources/"
+
 swiftc -parse-as-library -swift-version 6 -target "$(uname -m)-apple-macosx14.0" \
     "$PROJECT_ROOT/Sources/CodexSwitch/Services/AppInstaller.swift" \
+    "$PROJECT_ROOT/Sources/CodexSwitch/Localization/LanguageSettings.swift" \
     "$PROJECT_ROOT/Tests/InstallIntegration/InstallFixture.swift" \
     -o "$SOURCE_APP/Contents/MacOS/InstallFixture"
 python3 - "$TEST_ROOT" <<'PY'

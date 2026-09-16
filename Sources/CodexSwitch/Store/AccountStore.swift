@@ -13,7 +13,14 @@ final class AccountStore: ObservableObject {
     struct Notice: Identifiable {
         let id = UUID()
         let style: NoticeStyle
-        let message: String
+        private let messageProvider: () -> String
+        var message: String { messageProvider() }
+
+        // 이미 표시 중인 알림도 내용·상태를 유지한 채 선택한 언어로 다시 렌더링한다.
+        init(style: NoticeStyle, message: @autoclosure @escaping () -> String) {
+            self.style = style
+            messageProvider = message
+        }
     }
 
     @Published private(set) var accounts: [AccountListItem] = []
@@ -180,7 +187,7 @@ final class AccountStore: ObservableObject {
                 let registry = try await authService.loadRegistry()
                 apply(registry)
             } catch is CancellationError {
-                notice = Notice(style: .warning, message: "새로 고침을 취소했습니다.")
+                notice = Notice(style: .warning, message: L10n.text("새로 고침을 취소했습니다."))
             } catch {
                 notice = Notice(style: .error, message: error.localizedDescription)
                 // 사용량 helper 조회가 실패해도 별도 쿠폰 API 갱신은 시도한다.
@@ -216,7 +223,7 @@ final class AccountStore: ObservableObject {
                 )
             } catch is CancellationError {
                 await restoreChatGPTIfNeeded(after: stopResult)
-                notice = Notice(style: .warning, message: "계정 전환을 취소했습니다.")
+                notice = Notice(style: .warning, message: L10n.text("계정 전환을 취소했습니다."))
             } catch {
                 await restoreChatGPTIfNeeded(after: stopResult)
                 notice = Notice(style: .error, message: error.localizedDescription)
@@ -253,26 +260,26 @@ final class AccountStore: ObservableObject {
                         stopResult: stopResult
                     )
                 } else if wasActive {
-                    let closedSuffix: String
+                    let closedSuffix: () -> String
                     if case .stopped = stopResult {
-                        closedSuffix = " ChatGPT는 닫힌 상태입니다."
+                        closedSuffix = { L10n.text(" ChatGPT는 닫힌 상태입니다.") }
                     } else {
-                        closedSuffix = ""
+                        closedSuffix = { "" }
                     }
                     notice = Notice(
                         style: .success,
-                        message: "계정을 제거하고 이 Mac의 Codex 인증을 해제했습니다.\(closedSuffix)"
+                        message: L10n.text("계정을 제거하고 이 Mac의 Codex 인증을 해제했습니다.%@", closedSuffix())
                     )
                 } else {
                     notice = Notice(
                         style: .success,
-                        message: "\(item.account.displayName) 계정을 이 Mac에서 제거했습니다."
+                        message: L10n.text("%@ 계정을 이 Mac에서 제거했습니다.", String(item.account.displayName))
                     )
                 }
                 applyRemovalCleanupWarningIfNeeded(removalResult)
             } catch is CancellationError {
                 await restoreChatGPTIfNeeded(after: stopResult)
-                notice = Notice(style: .warning, message: "계정 제거를 취소했습니다.")
+                notice = Notice(style: .warning, message: L10n.text("계정 제거를 취소했습니다."))
             } catch CodexAuthError.credentialRestoreFailed {
                 // auth와 registry의 일관성을 보장할 수 없으므로 ChatGPT는 닫힌 채로 둔다.
                 if let registry = try? await authService.loadRegistry() {
@@ -295,10 +302,10 @@ final class AccountStore: ObservableObject {
 
     private func applyRemovalCleanupWarningIfNeeded(_ result: AccountRemovalResult) {
         guard !result.credentialCleanupComplete else { return }
-        let completedMessage = notice?.message ?? "계정은 제거됐습니다."
+        let completedNotice = notice
         notice = Notice(
             style: .warning,
-            message: "\(completedMessage) 일부 로컬 인증 백업을 정리하지 못했습니다. 파일 권한을 확인해 주세요."
+            message: L10n.text("%@ 일부 로컬 인증 백업을 정리하지 못했습니다. 파일 권한을 확인해 주세요.", completedNotice?.message ?? L10n.text("계정은 제거됐습니다."))
         )
     }
 
@@ -318,17 +325,17 @@ final class AccountStore: ObservableObject {
                 let registry = try await authService.loadRegistry()
                 let connectedName = registry.accounts.first {
                     $0.accountKey == connectedAccountKey
-                }?.displayName ?? "새 계정"
+                }?.displayName ?? L10n.text("새 계정")
                 apply(registry)
-                let message = registry.activeAccountKey == nil
-                    ? "\(connectedName) 계정을 추가했습니다. 사용할 계정을 선택해 주세요."
-                    : "\(connectedName) 계정을 추가했습니다. 현재 계정은 그대로 유지됩니다."
+                let message = { registry.activeAccountKey == nil
+                    ? L10n.text("%@ 계정을 추가했습니다. 사용할 계정을 선택해 주세요.", String(connectedName))
+                    : L10n.text("%@ 계정을 추가했습니다. 현재 계정은 그대로 유지됩니다.", String(connectedName)) }
                 notice = Notice(
                     style: .success,
-                    message: message
+                    message: message()
                 )
             } catch is CancellationError {
-                notice = Notice(style: .warning, message: "계정 추가를 취소했습니다.")
+                notice = Notice(style: .warning, message: L10n.text("계정 추가를 취소했습니다."))
             } catch {
                 // import가 끝난 뒤 정리 오류가 나도 실제 계정 목록과 화면을 다시 맞춘다.
                 if let registry = try? await authService.loadRegistry() {
@@ -397,15 +404,15 @@ final class AccountStore: ObservableObject {
         stopResult: ChatGPTAppController.StopResult
     ) async {
         guard restartChatGPTAfterSwitch else {
-            let message: String
+            let message: () -> String
             if case .stopped = stopResult {
-                message = "\(displayName) 계정을 \(action)했습니다. ChatGPT는 닫힌 상태입니다."
+                message = { L10n.text("%@ 계정을 %@했습니다. ChatGPT는 닫힌 상태입니다.", String(displayName), L10n.text(action)) }
             } else {
-                message = "\(displayName) 계정을 \(action)했습니다."
+                message = { L10n.text("%@ 계정을 %@했습니다.", String(displayName), L10n.text(action)) }
             }
             notice = Notice(
                 style: .success,
-                message: message
+                message: message()
             )
             return
         }
@@ -421,13 +428,13 @@ final class AccountStore: ObservableObject {
             notice = Notice(
                 style: .success,
                 message: didOpenChatGPT
-                    ? "\(displayName) 계정을 \(action)하고 ChatGPT를 열었습니다."
-                    : "\(displayName) 계정을 \(action)했습니다."
+                    ? L10n.text("%@ 계정을 %@하고 ChatGPT를 열었습니다.", String(displayName), L10n.text(action))
+                    : L10n.text("%@ 계정을 %@했습니다.", String(displayName), L10n.text(action))
             )
         } catch {
             notice = Notice(
                 style: .warning,
-                message: "계정은 \(action)됐습니다. \(error.localizedDescription)"
+                message: L10n.text("계정은 %@됐습니다. %@", L10n.text(action), String(error.localizedDescription))
             )
         }
     }

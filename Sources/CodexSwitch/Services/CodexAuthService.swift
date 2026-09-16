@@ -26,33 +26,33 @@ enum CodexAuthError: LocalizedError, Sendable {
     var errorDescription: String? {
         switch self {
         case .helperExecutableNotFound:
-            return "앱에 포함된 codex-auth를 찾지 못했습니다. CodexSwitch를 다시 설치해 주세요."
+            return L10n.text("앱에 포함된 codex-auth를 찾지 못했습니다. CodexSwitch를 다시 설치해 주세요.")
         case .commandTimedOut:
-            return "codex-auth 응답이 없어 작업을 중단했습니다. 잠시 후 다시 시도해 주세요."
+            return L10n.text("codex-auth 응답이 없어 작업을 중단했습니다. 잠시 후 다시 시도해 주세요.")
         case let .commandFailed(message):
-            return message.isEmpty ? "계정 명령을 실행하지 못했습니다." : message
+            return message.isEmpty ? L10n.text("계정 명령을 실행하지 못했습니다.") : message
         case .credentialRestoreFailed:
-            return "인증 파일을 원래 상태로 복구하지 못했습니다. ChatGPT를 열지 말고 CodexSwitch를 종료한 뒤 백업 파일을 확인해 주세요."
+            return L10n.text("인증 파일을 원래 상태로 복구하지 못했습니다. ChatGPT를 열지 말고 CodexSwitch를 종료한 뒤 백업 파일을 확인해 주세요.")
         case .invalidLoginCredential:
-            return "로그인한 계정의 인증 정보를 확인하지 못했습니다. 계정 추가를 다시 시도해 주세요."
+            return L10n.text("로그인한 계정의 인증 정보를 확인하지 못했습니다. 계정 추가를 다시 시도해 주세요.")
         case .accountAlreadyConnected:
-            return "이미 추가된 계정입니다. 상단 계정 목록에서 선택해 주세요."
+            return L10n.text("이미 추가된 계정입니다. 상단 계정 목록에서 선택해 주세요.")
         case .temporaryCredentialCleanupFailed:
-            return "임시 로그인 정보를 지우지 못했습니다. 계정은 이미 추가됐을 수 있습니다. CodexSwitch를 종료한 뒤 계정 목록을 확인해 주세요."
+            return L10n.text("임시 로그인 정보를 지우지 못했습니다. 계정은 이미 추가됐을 수 있습니다. CodexSwitch를 종료한 뒤 계정 목록을 확인해 주세요.")
         case .invalidRegistry:
-            return "계정 목록 파일을 읽지 못했습니다. codex-auth에서 계정 목록을 확인해 주세요."
+            return L10n.text("계정 목록 파일을 읽지 못했습니다. codex-auth에서 계정 목록을 확인해 주세요.")
         case let .unsupportedRegistryVersion(version):
-            return "codex-auth registry v\(version)은 아직 지원하지 않습니다. 안정판 0.2.10 형식(v3)이 필요합니다."
+            return L10n.text("codex-auth registry v%@은 아직 지원하지 않습니다. 안정판 0.2.10 형식(v3)이 필요합니다.", String(version))
         case .accountNotFound:
-            return "선택한 계정이 목록에서 사라졌습니다. 새로 고친 뒤 다시 시도해 주세요."
+            return L10n.text("선택한 계정이 목록에서 사라졌습니다. 새로 고친 뒤 다시 시도해 주세요.")
         case .snapshotNotFound:
-            return "선택한 계정의 인증 스냅샷을 찾지 못했습니다. 계정을 다시 연결해 주세요."
+            return L10n.text("선택한 계정의 인증 스냅샷을 찾지 못했습니다. 계정을 다시 연결해 주세요.")
         case .registryChanged:
-            return "다른 프로세스에서 계정 목록이 변경됐습니다. 새로 고친 뒤 다시 시도해 주세요."
+            return L10n.text("다른 프로세스에서 계정 목록이 변경됐습니다. 새로 고친 뒤 다시 시도해 주세요.")
         case .activeCredentialChanged:
-            return "현재 ChatGPT 인증이 선택한 계정과 일치하지 않아 제거를 중단했습니다. 계정 목록을 새로 고친 뒤 다시 시도해 주세요."
+            return L10n.text("현재 ChatGPT 인증이 선택한 계정과 일치하지 않아 제거를 중단했습니다. 계정 목록을 새로 고친 뒤 다시 시도해 주세요.")
         case .autoSwitchRunning:
-            return "codex-auth 자동 전환이 실행 중이라 수동 전환을 중단했습니다. 자동 전환을 끈 뒤 다시 시도해 주세요."
+            return L10n.text("codex-auth 자동 전환이 실행 중이라 수동 전환을 중단했습니다. 자동 전환을 끈 뒤 다시 시도해 주세요.")
         }
     }
 }
@@ -1676,7 +1676,7 @@ actor CodexAuthService {
             contents: nil,
             attributes: [.posixPermissions: 0o600]
         ) else {
-            throw CodexAuthError.commandFailed("보안 임시 파일을 만들지 못했습니다.")
+            throw CodexAuthError.commandFailed(L10n.text("보안 임시 파일을 만들지 못했습니다."))
         }
 
         do {

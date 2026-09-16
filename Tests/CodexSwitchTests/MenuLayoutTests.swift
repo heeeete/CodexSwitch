@@ -4,7 +4,7 @@ import XCTest
 @testable import CodexSwitch
 
 @MainActor
-final class MenuLayoutTests: XCTestCase {
+final class MenuLayoutTests: LocalizedTestCase {
     // 선택한 큰 숫자 시안을 주간 전용·5시간 포함·잔여량 부족 상태로 실제 렌더링한다.
     func testRedesignedUsageAndCouponLayouts() async throws {
         let suite = "CodexSwitch-UsageLayout-\(UUID().uuidString)"

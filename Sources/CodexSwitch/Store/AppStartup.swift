@@ -40,7 +40,7 @@ final class AppStartup: NSObject, ObservableObject, NSApplicationDelegate, NSWin
                 let otherApps = NSRunningApplication.runningApplications(withBundleIdentifier: Bundle.main.bundleIdentifier!)
                     .filter { $0.processIdentifier != ProcessInfo.processInfo.processIdentifier && !$0.isTerminated }
                 guard otherApps.isEmpty else {
-                    showInstallationError("실행 중인 CodexSwitch의 메뉴에서 ‘종료’를 누른 뒤 다시 시도해 주세요.")
+                    showInstallationError(L10n.text("실행 중인 CodexSwitch의 메뉴에서 ‘종료’를 누른 뒤 다시 시도해 주세요."))
                     return
                 }
                 let installation = try await Task.detached { try installer.install() }.value
@@ -62,7 +62,7 @@ final class AppStartup: NSObject, ObservableObject, NSApplicationDelegate, NSWin
             } catch {
                 NSLog("CodexSwitch installation failed: %@", error.localizedDescription)
                 showInstallationError((error as? AppInstaller.InstallationError)?.localizedDescription
-                    ?? "설치를 마치지 못했어요. Finder에서 앱을 응용 프로그램 폴더로 옮긴 뒤 다시 실행해 주세요.")
+                    ?? L10n.text("설치를 마치지 못했어요. Finder에서 앱을 응용 프로그램 폴더로 옮긴 뒤 다시 실행해 주세요."))
             }
         }
     }
@@ -89,7 +89,7 @@ final class AppStartup: NSObject, ObservableObject, NSApplicationDelegate, NSWin
                 contentRect: NSRect(x: 0, y: 0, width: 460, height: 330),
                 styleMask: [.titled, .closable, .fullSizeContentView], backing: .buffered, defer: false
             )
-            window.title = "CodexSwitch 설치"
+            window.title = L10n.text("CodexSwitch 설치")
             window.titleVisibility = .hidden
             window.titlebarAppearsTransparent = true
             window.isMovableByWindowBackground = true

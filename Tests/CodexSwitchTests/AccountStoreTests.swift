@@ -4,7 +4,7 @@ import XCTest
 @testable import CodexSwitch
 
 @MainActor
-final class AccountStoreTests: XCTestCase {
+final class AccountStoreTests: LocalizedTestCase {
     // 메뉴의 SwiftUI task가 취소돼도 첫 로드는 끝나며 다음 열기에서 중복 실행하지 않는다.
     func testInitialLoadOutlivesCancelledViewTask() async throws {
         let rootURL = FileManager.default.temporaryDirectory

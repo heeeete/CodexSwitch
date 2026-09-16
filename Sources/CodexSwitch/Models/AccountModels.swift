@@ -178,9 +178,9 @@ struct UsageMeter: Identifiable, Equatable, Sendable {
 
     var displayTitle: String {
         switch windowMinutes {
-        case 300: return "5시간 잔여량"
-        case 10_080: return "주간 잔여량"
-        default: return "\(label) 잔여량"
+        case 300: return L10n.text("5시간 잔여량")
+        case 10_080: return L10n.text("주간 잔여량")
+        default: return L10n.text("%@ 잔여량", String(label))
         }
     }
 

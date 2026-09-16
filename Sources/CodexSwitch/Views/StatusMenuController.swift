@@ -10,10 +10,11 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
     let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
     let menu = NSMenu()
     private let contentItem = NSMenuItem()
-    private let switchItem = NSMenuItem(title: "계정 변경", action: nil, keyEquivalent: "")
-    private let removeItem = NSMenuItem(title: "계정 제거", action: nil, keyEquivalent: "")
-    private let connectionItem = NSMenuItem(title: "계정 추가", action: nil, keyEquivalent: "")
+    private let switchItem = NSMenuItem(title: L10n.text("계정 변경"), action: nil, keyEquivalent: "")
+    private let removeItem = NSMenuItem(title: L10n.text("계정 제거"), action: nil, keyEquivalent: "")
+    private let connectionItem = NSMenuItem(title: L10n.text("계정 추가"), action: nil, keyEquivalent: "")
     private var storeObservation: AnyCancellable?
+    private var languageObservation: AnyCancellable?
     private var displayTimer: Timer?
     private(set) var settingsWindow: NSWindow?
 
@@ -45,7 +46,7 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
         connectionItem.action = #selector(connectAccount)
         menu.addItem(.separator())
         // 메뉴 단축키와 클릭은 같은 실행 시점의 상태 검사를 공유한다.
-        for (title, key, action) in [("설정…", ",", #selector(openSettings)), ("종료", "q", #selector(quit))] {
+        for (title, key, action) in [(L10n.text("설정…"), ",", #selector(openSettings)), (L10n.text("종료"), "q", #selector(quit))] {
             let item = NSMenuItem(title: title, action: action, keyEquivalent: key)
             item.target = self
             item.image = NSImage(systemSymbolName: key == "," ? "gearshape" : "power", accessibilityDescription: title)
@@ -67,6 +68,12 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
         refreshAccountMenus()
         // Published 값이 반영된 다음, 메뉴 추적 중에도 명령의 활성 상태를 갱신한다.
         storeObservation = store.objectWillChange.sink { [weak self] _ in
+            RunLoop.main.perform(inModes: [.common]) { [weak self] in
+                MainActor.assumeIsolated { self?.refreshAccountMenus() }
+            }
+        }
+        // 메뉴 객체와 열린 설정 창의 제목도 언어 저장 직후 같은 상태로 갱신한다.
+        languageObservation = LanguageSettings.shared.$selection.dropFirst().sink { [weak self] _ in
             RunLoop.main.perform(inModes: [.common]) { [weak self] in
                 MainActor.assumeIsolated { self?.refreshAccountMenus() }
             }
@@ -105,6 +112,17 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
 
     // 계정 구성이 같으면 기존 항목을 유지해 새로고침 중에도 선택 추적을 보존한다.
     func refreshAccountMenus() {
+        switchItem.title = L10n.text("계정 변경")
+        removeItem.title = L10n.text("계정 제거")
+        switchItem.submenu?.title = switchItem.title
+        removeItem.submenu?.title = removeItem.title
+        for commandMenu in [menu, NSApp.mainMenu?.items.first?.submenu].compactMap({ $0 }) {
+            for item in commandMenu.items {
+                if item.keyEquivalent == "," { item.title = L10n.text("설정…") }
+                if item.keyEquivalent == "q" { item.title = L10n.text("종료") }
+            }
+        }
+        settingsWindow?.title = L10n.text("CodexSwitch 설정")
         let now = Date()
         let summaries = Dictionary(uniqueKeysWithValues: store.accounts.map {
             ($0.account.accountKey, AccountUsageSummary(account: $0.account, now: now))
@@ -117,8 +135,8 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
             statusItem.button?.setAccessibilityLabel("CodexSwitch, \(summary.menuText)")
         } else {
             statusItem.button?.title = ""
-            statusItem.button?.toolTip = "CodexSwitch · 현재 계정 없음"
-            statusItem.button?.setAccessibilityLabel("CodexSwitch, 현재 계정 없음")
+            statusItem.button?.toolTip = L10n.text("CodexSwitch · 현재 계정 없음")
+            statusItem.button?.setAccessibilityLabel(L10n.text("CodexSwitch, 현재 계정 없음"))
         }
         for (parent, action) in [(switchItem, #selector(switchAccount(_:))), (removeItem, #selector(removeAccount(_:)))] {
             guard let submenu = parent.submenu else { continue }
@@ -138,14 +156,14 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
             }
             for (item, account) in zip(submenu.items, store.accounts) {
                 let active = account.account.accountKey == store.activeAccountKey
-                let usage = summaries[account.account.accountKey]?.menuText ?? "사용량 정보 없음"
+                let usage = summaries[account.account.accountKey]?.menuText ?? L10n.text("사용량 정보 없음")
                 item.title = "\(account.account.displayName)    \(usage)"
                 item.toolTip = "\(account.account.email) · \(account.account.displayPlan)\n\(usage)"
                 item.state = active ? .on : .off
                 item.isEnabled = !store.isBusy && (parent === removeItem || !active)
             }
         }
-        connectionItem.title = store.isConnecting ? "추가 취소" : "계정 추가"
+        connectionItem.title = store.isConnecting ? L10n.text("추가 취소") : L10n.text("계정 추가")
         connectionItem.isEnabled = !store.isBusy || store.isConnecting
     }
 
@@ -169,9 +187,9 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
             await Task.yield()
             guard let self, let item = selectedAccount(sender) else { return }
             guard SystemConfirmationAlert.present(
-                title: "이 계정을 이 Mac에서 제거할까요?",
+                title: L10n.text("이 계정을 이 Mac에서 제거할까요?"),
                 message: removalMessage(for: item),
-                confirmTitle: "제거",
+                confirmTitle: L10n.text("제거"),
                 confirmIsDestructive: true
             ) else { return }
             store.removeAccount(item)
@@ -187,19 +205,20 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
     private func removalMessage(for item: AccountListItem) -> String {
         let name = item.account.displayName
         let isActive = item.account.accountKey == store.activeAccountKey
-        let localOnly = "ChatGPT 계정 자체는 삭제되지 않습니다."
+        let localOnly = L10n.text("ChatGPT 계정 자체는 삭제되지 않습니다.")
 
         if isActive, store.accounts.count == 1 {
-            return "“\(name)”은 마지막 계정입니다. 제거하면 ChatGPT를 닫고 이 Mac의 Codex 인증을 해제합니다. \(localOnly)"
+            return L10n.text("“%@”은 마지막 계정입니다. 제거하면 ChatGPT를 닫고 이 Mac의 Codex 인증을 해제합니다. %@", String(name), String(localOnly))
         }
         if isActive {
-            return "“\(name)”은 현재 사용 중인 계정입니다. 제거하면 ChatGPT를 안전하게 닫고 남은 계정으로 전환합니다. \(localOnly)"
+            return L10n.text("“%@”은 현재 사용 중인 계정입니다. 제거하면 ChatGPT를 안전하게 닫고 남은 계정으로 전환합니다. %@", String(name), String(localOnly))
         }
-        return "이 Mac에 저장된 “\(name)”의 인증 정보만 제거합니다. \(localOnly)"
+        return L10n.text("이 Mac에 저장된 “%@”의 인증 정보만 제거합니다. %@", String(name), String(localOnly))
     }
 
     // 앱 수명과 함께 상태바 항목과 소유 창을 정리한다.
     func stop() {
+        languageObservation?.cancel()
         displayTimer?.invalidate()
         storeObservation?.cancel()
         menu.cancelTracking()
@@ -215,7 +234,7 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
             let hosting = NSHostingView(rootView: SettingsView(updateStore: updateStore, accountStore: store))
             let window = NSWindow(contentRect: NSRect(origin: .zero, size: hosting.fittingSize),
                                   styleMask: [.titled, .closable], backing: .buffered, defer: false)
-            window.title = "CodexSwitch 설정"
+            window.title = L10n.text("CodexSwitch 설정")
             window.isReleasedWhenClosed = false
             window.contentView = hosting
             window.center()

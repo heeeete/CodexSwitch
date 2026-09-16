@@ -4,6 +4,7 @@ import PackageDescription
 
 let package = Package(
     name: "CodexSwitch",
+    defaultLocalization: "en",
     platforms: [
         .macOS(.v14)
     ],
@@ -19,6 +20,7 @@ let package = Package(
             name: "CodexSwitch",
             dependencies: ["Sparkle"],
             path: "Sources/CodexSwitch",
+            resources: [.process("Resources")],
             linkerSettings: [
                 .unsafeFlags(["-Xlinker", "-rpath", "-Xlinker", "@executable_path/../Frameworks"])
             ]

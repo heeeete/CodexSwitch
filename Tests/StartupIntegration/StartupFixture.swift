@@ -23,7 +23,7 @@ import SwiftUI
                 print("FAIL: startup completed without a menu bar item on screen")
                 exit(EXIT_FAILURE)
             }
-            guard !NSApp.windows.contains(where: { $0.title == "CodexSwitch 설정" && $0.isVisible }) else {
+            guard !NSApp.windows.contains(where: { $0.title == L10n.text("CodexSwitch 설정") && $0.isVisible }) else {
                 print("FAIL: startup unexpectedly opened a settings window")
                 exit(EXIT_FAILURE)
             }

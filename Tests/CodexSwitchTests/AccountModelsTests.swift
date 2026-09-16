@@ -2,7 +2,7 @@ import Foundation
 import XCTest
 @testable import CodexSwitch
 
-final class AccountModelsTests: XCTestCase {
+final class AccountModelsTests: LocalizedTestCase {
     // 실제 registry 구조와 같은 fixture가 필요한 필드를 올바르게 읽는지 확인한다.
     func testRegistryDecodingAndUsageMapping() throws {
         let json = #"""

@@ -1,7 +1,7 @@
 import XCTest
 @testable import CodexSwitch
 
-final class AccountUsageSummaryTests: XCTestCase {
+final class AccountUsageSummaryTests: LocalizedTestCase {
     private let now = Date(timeIntervalSince1970: 2_000_000_000)
 
     // 주간 한도가 primary에만 있어도 정확한 창 이름과 실제 기록 시각을 표시한다.

@@ -3,7 +3,7 @@ import SwiftUI
 import XCTest
 @testable import CodexSwitch
 
-final class AppInstallerTests: XCTestCase {
+final class AppInstallerTests: LocalizedTestCase {
     // 최초 설치는 전체 앱을 복사하고 다운로드 원본은 보존한다.
     func testFirstInstallCopiesAppAndRecognizesInstalledLocation() throws {
         let fixture = try Fixture()

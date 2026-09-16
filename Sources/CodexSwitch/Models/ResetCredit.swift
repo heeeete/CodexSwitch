@@ -15,9 +15,9 @@ struct ResetCredit: Decodable, Identifiable, Sendable, Equatable {
 
     // 만료 시각 대신 남은 기간을 일·시간으로, 하루 미만은 시간·분으로 표시한다.
     func remainingTime(at now: Date) -> String {
-        guard let expiresAt else { return "기한 없음" }
+        guard let expiresAt else { return L10n.text("기한 없음") }
         let seconds = max(0, Int(expiresAt.timeIntervalSince(now)))
-        if seconds == 0 { return "만료" }
+        if seconds == 0 { return L10n.text("만료") }
         let days = seconds / 86_400
         let hours = seconds % 86_400 / 3_600
         if days > 0 { return "\(days)d \(hours)h" }

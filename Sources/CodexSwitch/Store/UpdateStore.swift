@@ -12,7 +12,8 @@ final class UpdateStore: NSObject, ObservableObject, SPUUpdaterDelegate {
     @Published private(set) var status: Status = .idle
     @Published private(set) var automaticallyChecksForUpdates = true
     @Published private(set) var canCheckForUpdates = false
-    @Published private(set) var checkMessage = ""
+    @Published private(set) var checkMessageKey = ""
+    var checkMessage: String { L10n.text(checkMessageKey) }
     private var observations = Set<AnyCancellable>()
     private var pendingAction: (() -> Void)?
     private var updater: SPUUpdater?
@@ -34,19 +35,19 @@ final class UpdateStore: NSObject, ObservableObject, SPUUpdaterDelegate {
     var message: String {
         switch status {
         case .idle: return ""
-        case .available: return "새로운 업데이트가 있어요!"
-        case .preparing: return "업데이트를 준비하고 있어요."
-        case .ready: return "새로운 업데이트가 있어요! 다시 시작할까요?"
-        case .installing: return "업데이트하고 다시 시작할게요."
-        case .failed: return "업데이트를 준비하지 못했어요. 다시 시도할까요?"
+        case .available: return L10n.text("새로운 업데이트가 있어요!")
+        case .preparing: return L10n.text("업데이트를 준비하고 있어요.")
+        case .ready: return L10n.text("새로운 업데이트가 있어요! 다시 시작할까요?")
+        case .installing: return L10n.text("업데이트하고 다시 시작할게요.")
+        case .failed: return L10n.text("업데이트를 준비하지 못했어요. 다시 시도할까요?")
         }
     }
 
     var actionTitle: String? {
         switch status {
-        case .available: return "업데이트"
-        case .ready: return "다시 시작"
-        case .failed: return "다시 시도"
+        case .available: return L10n.text("업데이트")
+        case .ready: return L10n.text("다시 시작")
+        case .failed: return L10n.text("다시 시도")
         default: return nil
         }
     }
@@ -120,13 +121,13 @@ final class UpdateStore: NSObject, ObservableObject, SPUUpdaterDelegate {
     }
 
     fileprivate func offerUpdate(ready: Bool, action: @escaping () -> Void) {
-        checkMessage = ""
+        checkMessageKey = ""
         pendingAction = action
         status = ready ? .ready : .available
     }
 
     fileprivate func showPreparing() {
-        checkMessage = ""
+        checkMessageKey = ""
         pendingAction = nil
         status = .preparing
     }
@@ -138,19 +139,19 @@ final class UpdateStore: NSObject, ObservableObject, SPUUpdaterDelegate {
     fileprivate func showFailure(_ error: Error) {
         NSLog("CodexSwitch update failed: %@", error.localizedDescription)
         pendingAction = nil
-        checkMessage = ""
+        checkMessageKey = ""
         restartCancelled()
         status = .failed
     }
 
     // 수동 조회의 진행·최신 버전 안내는 설정 창에서만 표시한다.
     fileprivate func showChecking() {
-        checkMessage = "업데이트를 확인하고 있어요."
+        checkMessageKey = "업데이트를 확인하고 있어요."
     }
 
     fileprivate func showUpToDate() {
         dismiss()
-        checkMessage = "최신 버전을 사용하고 있어요."
+        checkMessageKey = "최신 버전을 사용하고 있어요."
     }
 
     fileprivate func dismiss() {

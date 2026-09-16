@@ -5,7 +5,7 @@ import XCTest
 @testable import CodexSwitch
 
 @MainActor
-final class UpdateStoreTests: XCTestCase {
+final class UpdateStoreTests: LocalizedTestCase {
     // 다운로드·검증 완료 안내는 정확한 문구를 쓰고 클릭 전에는 설치하지 않는다.
     func testReadyUpdateWaitsForClickAndInstallsOnlyOnce() {
         let store = UpdateStore()

@@ -16,6 +16,13 @@ test -d "$APP_BUNDLE"
 test -x "$APP_EXECUTABLE"
 test -x "$HELPER_EXECUTABLE"
 test -s "$ICON_FILE"
+# SwiftPM/Xcode 리소스 번들 형식 모두에서 두 언어가 실제로 포함됐는지 확인한다.
+LOCALIZATION_ROOT="$APP_BUNDLE/Contents/Resources/CodexSwitch_CodexSwitch.bundle"
+if [[ -d "$LOCALIZATION_ROOT/Contents/Resources" ]]; then
+    LOCALIZATION_ROOT="$LOCALIZATION_ROOT/Contents/Resources"
+fi
+test -s "$LOCALIZATION_ROOT/en.lproj/Localizable.strings"
+test -s "$LOCALIZATION_ROOT/ko.lproj/Localizable.strings"
 test -f "$APP_BUNDLE/Contents/Resources/ThirdPartyNotices.txt"
 test -f "$APP_BUNDLE/Contents/Resources/codex-auth-LICENSE.txt"
 test -f "$APP_BUNDLE/Contents/Resources/Sparkle-LICENSE.txt"

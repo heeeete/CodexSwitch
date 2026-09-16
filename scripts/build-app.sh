@@ -60,6 +60,8 @@ ditto "$SPARKLE_ROOT/Sparkle.xcframework/macos-arm64_x86_64/Sparkle.framework" \
 cp "$SPARKLE_ROOT/LICENSE" "$APP_RESOURCES/Sparkle-LICENSE.txt"
 
 cp "$BUILD_PRODUCTS/CodexSwitch" "$APP_MACOS/CodexSwitch"
+# SwiftPM의 한국어·영어 번역 리소스를 앱 번들에도 함께 넣는다.
+ditto "$BUILD_PRODUCTS/CodexSwitch_CodexSwitch.bundle" "$APP_RESOURCES/CodexSwitch_CodexSwitch.bundle"
 cp "$PROJECT_ROOT/Resources/Info.plist" "$APP_CONTENTS/Info.plist"
 cp "$PROJECT_ROOT/Resources/ThirdPartyNotices.txt" "$APP_RESOURCES/ThirdPartyNotices.txt"
 cp "$PROJECT_ROOT/Vendor/codex-auth/source/LICENSE" "$APP_RESOURCES/codex-auth-LICENSE.txt"

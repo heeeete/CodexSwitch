@@ -3,7 +3,7 @@ import XCTest
 @testable import CodexSwitch
 
 @MainActor
-final class StatusMenuControllerTests: XCTestCase {
+final class StatusMenuControllerTests: LocalizedTestCase {
     // 메뉴를 닫아둔 상태에서도 계정 변경·새 데이터가 메뉴바와 기본 하위 메뉴에 반영된다.
     func testUsageDisplayFollowsAccountAndDataChanges() async throws {
         _ = NSApplication.shared

@@ -17,7 +17,7 @@ struct UpdateNoticeView: View {
                     Button(actionTitle) { updateStore.performAction() }
                         .controlSize(.small)
                         .disabled(isBusy)
-                        .help(isBusy ? "진행 중인 계정 작업이 끝나면 업데이트할 수 있어요." : actionTitle)
+                        .help(isBusy ? L10n.text("진행 중인 계정 작업이 끝나면 업데이트할 수 있어요.") : actionTitle)
                 }
             } else {
                 ProgressView()

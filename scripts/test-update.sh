@@ -31,11 +31,16 @@ for _ in {1..100}; do
 done
 TEST_PORT="$(cat "$TEST_ROOT/port")"
 
+# 통합 테스트 앱에도 언어 리소스를 포함한다.
+mkdir -p "$INSTALLED_APP/Contents/Resources"
+cp -R "$PROJECT_ROOT/Sources/CodexSwitch/Resources/"*.lproj "$INSTALLED_APP/Contents/Resources/"
+
 # 운영 UpdateStore를 그대로 컴파일하되 계정 관리 기능은 테스트 앱에 넣지 않는다.
 swiftc -parse-as-library -swift-version 6 -target "$(uname -m)-apple-macosx14.0" \
     -F "$SPARKLE_ROOT/Sparkle.xcframework/macos-arm64_x86_64" \
     -framework Sparkle -Xlinker -rpath -Xlinker @executable_path/../Frameworks \
     "$PROJECT_ROOT/Sources/CodexSwitch/Store/UpdateStore.swift" \
+    "$PROJECT_ROOT/Sources/CodexSwitch/Localization/LanguageSettings.swift" \
     "$PROJECT_ROOT/Tests/UpdateIntegration/UpdateFixture.swift" \
     -o "$INSTALLED_APP/Contents/MacOS/UpdateFixture"
 ditto "$SPARKLE_ROOT/Sparkle.xcframework/macos-arm64_x86_64/Sparkle.framework" \

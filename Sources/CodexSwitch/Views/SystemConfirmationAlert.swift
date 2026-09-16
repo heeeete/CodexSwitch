@@ -8,7 +8,7 @@ enum SystemConfirmationAlert {
         message: String,
         confirmTitle: String,
         confirmIsDestructive: Bool = false,
-        cancelTitle: String = "취소",
+        cancelTitle: String = L10n.text("취소"),
         runModal: ((NSAlert) -> NSApplication.ModalResponse)? = nil
     ) -> Bool {
         let alert = NSAlert()

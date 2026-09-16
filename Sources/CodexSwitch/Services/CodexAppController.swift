@@ -15,9 +15,9 @@ struct ChatGPTAppController {
         var errorDescription: String? {
             switch self {
             case .couldNotQuit:
-                return "ChatGPT가 종료되지 않았습니다. 직접 종료한 뒤 다시 열어 주세요."
+                return L10n.text("ChatGPT가 종료되지 않았습니다. 직접 종료한 뒤 다시 열어 주세요.")
             case .missingBundleURL:
-                return "ChatGPT 앱 위치를 찾지 못했습니다. 직접 다시 열어 주세요."
+                return L10n.text("ChatGPT 앱 위치를 찾지 못했습니다. 직접 다시 열어 주세요.")
             }
         }
     }

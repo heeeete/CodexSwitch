@@ -52,26 +52,26 @@ struct ResetCreditSection: View {
         TimelineView(.periodic(from: .now, by: 60)) { context in
             VStack(alignment: .leading, spacing: 8) {
                 HStack {
-                    Text("초기화 쿠폰").font(.system(size: 12, weight: .semibold))
+                    Text(L10n.text("초기화 쿠폰")).font(.system(size: 12, weight: .semibold))
                     Spacer()
                     if case let .loaded(credits) = state {
-                        Text("\(ResetCredit.available(in: credits, at: context.date).count)장")
+                        Text(L10n.text("%@장", String(ResetCredit.available(in: credits, at: context.date).count)))
                             .font(.system(size: 12))
                             .foregroundStyle(.secondary)
                     }
                 }
                 switch state {
                 case .loading:
-                    statusText("쿠폰 조회 중…")
+                    statusText(L10n.text("쿠폰 조회 중…"))
                         // 첫 조회 중 메뉴를 열어도 일반적인 세 장이 도착할 공간을 확보한다.
                         .frame(height: 84, alignment: .topLeading)
                 case .failed:
-                    statusText("쿠폰을 조회하지 못했어요. 새로고침해 주세요.")
+                    statusText(L10n.text("쿠폰을 조회하지 못했어요. 새로고침해 주세요."))
                         .frame(height: 84, alignment: .topLeading)
                 case let .loaded(credits):
                     let available = ResetCredit.available(in: credits, at: context.date)
                     if available.isEmpty {
-                        statusText("사용 가능한 쿠폰 없음")
+                        statusText(L10n.text("사용 가능한 쿠폰 없음"))
                     } else {
                         // 긴 목록은 스크롤하고 일반적인 세 장은 한눈에 표시한다.
                         ScrollView {
@@ -80,9 +80,9 @@ struct ResetCreditSection: View {
                                     HStack(spacing: 10) {
                                         Image(systemName: "ticket").font(.system(size: 14))
                                             .accessibilityHidden(true)
-                                        Text("쿠폰 \(index + 1)").font(.system(size: 13))
+                                        Text(L10n.text("쿠폰 %@", String(index + 1))).font(.system(size: 13))
                                         Spacer(minLength: 4)
-                                        Text("남은 시간").font(.system(size: 10))
+                                        Text(L10n.text("남은 시간")).font(.system(size: 10))
                                             .foregroundStyle(.secondary)
                                         Text(credit.remainingTime(at: context.date))
                                             .font(.system(size: 13, weight: .semibold, design: .monospaced))
@@ -192,8 +192,8 @@ private struct AccountSwitcherTab: View {
             isHovered = hovering
         }
         .disabled(isDisabled || isSelected)
-        .help(isSelected ? "현재 계정" : "이 계정으로 전환")
-        .accessibilityLabel("\(item.account.displayName), \(item.account.displayPlan), \(isSelected ? "현재 계정" : "전환")")
+        .help(isSelected ? L10n.text("현재 계정") : L10n.text("이 계정으로 전환"))
+        .accessibilityLabel("\(item.account.displayName), \(item.account.displayPlan), \(isSelected ? L10n.text("현재 계정") : L10n.text("전환"))")
     }
 
     // 갱신 상태와 작업 중 표시는 계정 카드의 오른쪽 끝 한 자리에서 교체된다.
@@ -233,7 +233,7 @@ private struct ActiveAccountDetail: View {
                 .sorted { $0.windowMinutes < $1.windowMinutes }
             VStack(spacing: 14) {
                 if meters.isEmpty {
-                    Text("사용량 정보 없음")
+                    Text(L10n.text("사용량 정보 없음"))
                         .font(.system(size: 12, weight: .medium)).foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity, minHeight: 50, alignment: .leading)
                 } else {
@@ -264,14 +264,14 @@ private struct DetailedUsageMeterRow: View {
                         Text("\(meter.remainingPercent)%")
                             .font(.system(size: isCompact ? 32 : 40, weight: .bold, design: .rounded))
                             .monospacedDigit()
-                        Text("남음").font(.system(size: 16, weight: .medium)).foregroundStyle(.secondary)
+                        Text(L10n.text("남음")).font(.system(size: 16, weight: .medium)).foregroundStyle(.secondary)
                     }
                 }
                 Spacer(minLength: 8)
                 Rectangle().fill(CodexSwitchDesign.hairline(for: colorScheme))
                     .frame(width: 1, height: 38)
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("초기화까지").font(.system(size: 11)).foregroundStyle(.secondary)
+                    Text(L10n.text("초기화까지")).font(.system(size: 11)).foregroundStyle(.secondary)
                     Text(meter.resetCountdown(at: date) ?? "—")
                         .font(.system(size: 16, weight: .semibold, design: .monospaced))
                 }
@@ -288,7 +288,7 @@ private struct DetailedUsageMeterRow: View {
             }
             .frame(height: 10)
             .accessibilityHidden(true)
-            Text("\(100 - meter.remainingPercent)% 사용")
+            Text(L10n.text("%@%% 사용", String(100 - meter.remainingPercent)))
                 .font(.system(size: 11)).foregroundStyle(.secondary)
         }
         .accessibilityElement(children: .combine)
@@ -364,13 +364,13 @@ enum AccountRefreshStatus {
 
         switch age {
         case ..<60:
-            return "방금 갱신"
+            return L10n.text("방금 갱신")
         case ..<3_600:
-            return "갱신 \(Int(age / 60))분 전"
+            return L10n.text("갱신 %@분 전", String(Int(age / 60)))
         case ..<86_400:
-            return "갱신 \(Int(age / 3_600))시간 전"
+            return L10n.text("갱신 %@시간 전", String(Int(age / 3_600)))
         default:
-            return "갱신 \(Int(age / 86_400))일 전"
+            return L10n.text("갱신 %@일 전", String(Int(age / 86_400)))
         }
     }
 }

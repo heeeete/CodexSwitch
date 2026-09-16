@@ -3,7 +3,7 @@ import SwiftUI
 import XCTest
 @testable import CodexSwitch
 
-final class ResetCreditTests: XCTestCase {
+final class ResetCreditTests: LocalizedTestCase {
     // 날짜 대신 만료까지 남은 기간을 표시하고 하루·시간·분 경계를 검증한다.
     func testRemainingTimeCountdown() {
         let now = Date(timeIntervalSince1970: 1_000)

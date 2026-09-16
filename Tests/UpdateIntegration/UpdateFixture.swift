@@ -18,6 +18,7 @@ final class UpdateFixtureDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        UserDefaults.standard.set("ko", forKey: L10n.preferenceKey)
         if Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String == "4" {
             // 교체 후에도 자동 확인 선택이 유지되고 수동 확인이 최신 버전을 안내해야 한다.
             updates.start()
@@ -27,7 +28,7 @@ final class UpdateFixtureDelegate: NSObject, NSApplicationDelegate {
                 NSApp.terminate(nil)
                 return
             }
-            checkObservation = updates.$checkMessage.sink { [weak self] message in
+            checkObservation = updates.$checkMessageKey.sink { [weak self] message in
                 if message == "최신 버전을 사용하고 있어요." {
                     self?.record("passed", "앱 교체·재실행·설정 유지·최신 버전 수동 확인 성공")
                     NSApp.terminate(nil)

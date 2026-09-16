@@ -2,7 +2,7 @@ import Foundation
 import XCTest
 @testable import CodexSwitch
 
-final class LocalUsageReaderTests: XCTestCase {
+final class LocalUsageReaderTests: LocalizedTestCase {
     // 명시적으로 요청한 경우 현재 계정 표시값을 읽어 확인하며 원본은 변경하지 않는다.
     func testLiveLocalReadWhenRequested() async throws {
         guard ProcessInfo.processInfo.environment["CODEXSWITCH_VERIFY_LOCAL_USAGE"] == "1" else {

@@ -3,6 +3,7 @@ import SwiftUI
 // 기본 메뉴 위쪽의 계정 요약과 설정 토글을 구성한다.
 struct MenuContentView: View {
     @ObservedObject var store: AccountStore
+    @ObservedObject private var language = LanguageSettings.shared
     @ObservedObject var updateStore: UpdateStore = UpdateStore()
     @Environment(\.colorScheme) private var colorScheme
     @State private var refreshIsHovered = false
@@ -23,6 +24,8 @@ struct MenuContentView: View {
             footer
         }
         .frame(width: 372)
+        .id(language.selection)
+        .environment(\.locale, language.locale)
         // 메뉴 창의 기본 재질을 그대로 사용하고 별도 배경을 겹치지 않는다.
         .task {
             await store.loadLocalAccounts()
@@ -74,10 +77,10 @@ struct MenuContentView: View {
             .disabled((store.isBusy && !store.isRefreshing) || store.accounts.isEmpty)
             .help(
                 store.isRefreshing
-                    ? "사용량 새로 고침 취소"
-                    : "사용량과 쿠폰 새로 고침"
+                    ? L10n.text("사용량 새로 고침 취소")
+                    : L10n.text("사용량과 쿠폰 새로 고침")
             )
-            .accessibilityLabel(store.isRefreshing ? "사용량 새로 고침 취소" : "사용량 새로 고침")
+            .accessibilityLabel(store.isRefreshing ? L10n.text("사용량 새로 고침 취소") : L10n.text("사용량 새로 고침"))
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 9)
@@ -113,7 +116,7 @@ struct MenuContentView: View {
             if store.isLoading {
                 ProgressView()
                     .controlSize(.small)
-                Text("계정 불러오는 중")
+                Text(L10n.text("계정 불러오는 중"))
                     .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(CodexSwitchDesign.secondaryText(for: colorScheme))
             } else {
@@ -121,10 +124,10 @@ struct MenuContentView: View {
                     .font(.system(size: 28, weight: .light))
                     .foregroundStyle(CodexSwitchDesign.secondaryText(for: colorScheme))
 
-                Text("저장된 계정이 없습니다")
+                Text(L10n.text("저장된 계정이 없습니다"))
                     .font(.system(size: 14, weight: .semibold, design: .rounded))
 
-                Text("아래의 ‘계정 추가’를 눌러\nChatGPT 계정을 추가해 주세요.")
+                Text(L10n.text("아래의 ‘계정 추가’를 눌러\nChatGPT 계정을 추가해 주세요."))
                     .font(.system(size: 12))
                     .foregroundStyle(CodexSwitchDesign.secondaryText(for: colorScheme))
                     .multilineTextAlignment(.center)
@@ -147,16 +150,16 @@ struct MenuContentView: View {
             VStack(spacing: 0) {
                 // 자동 갱신 주기를 기존 계정 변경 설정 바로 위에서 켜고 끈다.
                 HStack(spacing: 8) {
-                    Text("자동 새로고침")
+                    Text(L10n.text("자동 새로고침"))
                         .font(.system(size: 13))
 
-                    Text("1분마다")
+                    Text(L10n.text("1분마다"))
                         .font(.system(size: 11))
                         .foregroundStyle(.secondary)
 
                     Spacer()
 
-                    Toggle("자동 새로고침", isOn: $store.autoRefreshEnabled)
+                    Toggle(L10n.text("자동 새로고침"), isOn: $store.autoRefreshEnabled)
                         .labelsHidden()
                         .toggleStyle(.switch)
                         .controlSize(.mini)
@@ -172,10 +175,10 @@ struct MenuContentView: View {
                 .onHover { hovering in
                     autoRefreshRowIsHovered = hovering
                 }
-                .help("메뉴를 닫아도 1분마다 사용량과 쿠폰을 새로 고칩니다.")
+                .help(L10n.text("메뉴를 닫아도 1분마다 사용량과 쿠폰을 새로 고칩니다."))
 
                 HStack(spacing: 8) {
-                    Text("변경 후 ChatGPT 열기")
+                    Text(L10n.text("변경 후 ChatGPT 열기"))
                         .font(.system(size: 13))
 
                     Spacer()
@@ -196,7 +199,7 @@ struct MenuContentView: View {
                 .onHover { hovering in
                     restartRowIsHovered = hovering
                 }
-                .help("안전한 계정 변경을 위해 실행 중인 ChatGPT는 항상 먼저 닫습니다.")
+                .help(L10n.text("안전한 계정 변경을 위해 실행 중인 ChatGPT는 항상 먼저 닫습니다."))
             }
             .padding(.horizontal, 6)
             .padding(.vertical, 6)
@@ -211,8 +214,8 @@ struct MenuContentView: View {
     }
 
     private var headerSubtitle: String {
-        guard !store.accounts.isEmpty else { return "연결된 계정 없음" }
-        return "계정 \(store.accounts.count)개"
+        guard !store.accounts.isEmpty else { return L10n.text("연결된 계정 없음") }
+        return L10n.text("계정 %@개", String(store.accounts.count))
     }
 
     private var sectionDivider: some View {
@@ -259,7 +262,7 @@ private struct NoticeBanner: View {
                     .font(.system(size: 9, weight: .bold))
             }
             .buttonStyle(.plain)
-            .accessibilityLabel("메시지 닫기")
+            .accessibilityLabel(L10n.text("메시지 닫기"))
         }
         .padding(.horizontal, 11)
         .padding(.vertical, 9)
@@ -354,8 +357,8 @@ private struct NoticeBanner: View {
             disclosureIsHovered = hovering
         }
         .accessibilityIdentifier("notice-disclosure")
-        .help(isExpanded ? "안내 접기" : "전체 안내 펼치기")
-        .accessibilityLabel(isExpanded ? "안내 접기" : "전체 안내 펼치기")
+        .help(isExpanded ? L10n.text("안내 접기") : L10n.text("전체 안내 펼치기"))
+        .accessibilityLabel(isExpanded ? L10n.text("안내 접기") : L10n.text("전체 안내 펼치기"))
     }
 
     // 실제 한 줄 높이를 넘는 안내에만 disclosure를 노출한다.

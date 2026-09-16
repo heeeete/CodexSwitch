@@ -6,7 +6,7 @@ import XCTest
 @_silgen_name("flock")
 private func testFlock(_ fileDescriptor: Int32, _ operation: Int32) -> Int32
 
-final class CodexAuthServiceTests: XCTestCase {
+final class CodexAuthServiceTests: LocalizedTestCase {
     // 격리 로그인은 계정을 등록하되 첫 계정을 자동 활성화하거나 live auth를 만들지 않는다.
     func testConnectAccountUsesBundledHelperAndInjectedCodexCLI() async throws {
         let rootURL = FileManager.default.temporaryDirectory

@@ -16,32 +16,32 @@ struct AccountUsageSummary {
             .sorted { $0.0.windowMinutes < $1.0.windowMinutes }
 
         guard !windows.isEmpty else {
-            menuBarText = "사용량 —"
-            menuText = "사용량 정보 없음"
+            menuBarText = L10n.text("사용량 —")
+            menuText = L10n.text("사용량 정보 없음")
             return
         }
 
         // 초기화 시각이 지난 저장 값은 새 데이터 없이 100%로 추정하지 않는다.
         menuBarText = windows.map { meter, expired in
-            let label = meter.windowMinutes == 10_080 ? "주간" : meter.label
+            let label = meter.windowMinutes == 10_080 ? L10n.text("주간") : meter.label
             return "\(label) \(expired ? "—" : "\(meter.remainingPercent)%")"
         }.joined(separator: " · ")
         let usage = windows.map { meter, expired in
-            let label = meter.windowMinutes == 10_080 ? "주간" : meter.label
-            return expired ? "\(label) 재조회 필요" : "\(label) \(meter.remainingPercent)% 남음"
+            let label = meter.windowMinutes == 10_080 ? L10n.text("주간") : meter.label
+            return expired ? L10n.text("%@ 재조회 필요", String(label)) : L10n.text("%@ %@%% 남음", String(label), String(meter.remainingPercent))
         }.joined(separator: " · ")
         menuText = "\(usage) · \(Self.ageText(timestamp: account.lastUsageAt, now: now))"
     }
 
     // 파일을 다시 읽은 시각(refreshedAt)과 사용량 자체가 기록된 시각을 혼동하지 않는다.
     private static func ageText(timestamp: Int64?, now: Date) -> String {
-        guard let timestamp else { return "조회 시각 없음" }
+        guard let timestamp else { return L10n.text("조회 시각 없음") }
         let age = max(0, now.timeIntervalSince1970 - TimeInterval(timestamp))
         switch age {
-        case ..<60: return "방금"
-        case ..<3_600: return "\(Int(age / 60))분 전"
-        case ..<86_400: return "\(Int(age / 3_600))시간 전"
-        default: return "\(Int(age / 86_400))일 전"
+        case ..<60: return L10n.text("방금")
+        case ..<3_600: return L10n.text("%@분 전", String(Int(age / 60)))
+        case ..<86_400: return L10n.text("%@시간 전", String(Int(age / 3_600)))
+        default: return L10n.text("%@일 전", String(Int(age / 86_400)))
         }
     }
 }

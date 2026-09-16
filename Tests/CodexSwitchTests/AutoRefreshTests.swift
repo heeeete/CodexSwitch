@@ -3,7 +3,7 @@ import XCTest
 @testable import CodexSwitch
 
 @MainActor
-final class AutoRefreshTests: XCTestCase {
+final class AutoRefreshTests: LocalizedTestCase {
     // 최초 실행부터 자동 갱신하고 사용자가 끈 선택은 재실행해도 유지한다.
     func testPreferenceDefaultsOnAndPersists() async throws {
         let fixture = try Fixture()

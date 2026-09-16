@@ -9,9 +9,9 @@ struct AppInstaller: Sendable {
 
         var errorDescription: String? {
             switch self {
-            case .invalidApp: return "설치할 앱 정보를 읽지 못했어요. ZIP 파일을 다시 다운로드해 주세요."
-            case .occupiedDestination: return "응용 프로그램 폴더에 같은 이름의 다른 앱이 있어요. 파일 이름을 확인해 주세요."
-            case .invalidSignature: return "앱 서명을 확인하지 못했어요. 공식 배포 파일을 다시 다운로드해 주세요."
+            case .invalidApp: return L10n.text("설치할 앱 정보를 읽지 못했어요. ZIP 파일을 다시 다운로드해 주세요.")
+            case .occupiedDestination: return L10n.text("응용 프로그램 폴더에 같은 이름의 다른 앱이 있어요. 파일 이름을 확인해 주세요.")
+            case .invalidSignature: return L10n.text("앱 서명을 확인하지 못했어요. 공식 배포 파일을 다시 다운로드해 주세요.")
             }
         }
     }
