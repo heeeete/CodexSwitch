@@ -1,11 +1,11 @@
 name: Release
 
-# 관리자가 Actions 화면에서 main의 버전을 확인한 뒤 직접 배포를 시작한다.
+# 관리자가 Actions 화면에서 새 버전을 입력하면 main을 빌드해 직접 배포한다.
 on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Info.plist와 같은 버전 (예: 0.2.0)"
+        description: "배포할 새 버전 (예: 0.3.11). Info.plist와 빌드 번호는 자동 갱신"
         required: true
         type: string
 
@@ -53,25 +53,26 @@ jobs:
               exit 1
           fi
           if [[ ! "$REQUESTED_VERSION" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
-              echo "::error::버전은 0.2.0과 같은 숫자 세 자리 형식이어야 합니다."
+              echo "::error::버전은 0.3.11과 같은 숫자 세 자리 형식이어야 합니다."
               exit 1
           fi
 
-          plist_version="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' Resources/Info.plist)"
+          # 릴리스 설명도 배포할 main 커밋에서 읽어 파일 내용 그대로 게시한다.
+          if [[ ! -s "docs/releases/$REQUESTED_VERSION.md" ]]; then
+              echo "::error::docs/releases/$REQUESTED_VERSION.md에 릴리스 설명을 작성해 main에 push해 주세요."
+              exit 1
+          fi
+          python3 scripts/prepare-release.py "$REQUESTED_VERSION"
           bundle_version="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' Resources/Info.plist)"
           release_tag="v$REQUESTED_VERSION"
 
-          if [[ "$REQUESTED_VERSION" != "$plist_version" ]]; then
-              echo "::error::입력한 버전과 Info.plist 버전($plist_version)이 다릅니다."
-              exit 1
-          fi
           if [[ ! "$bundle_version" =~ ^[1-9][0-9]*$ ]]; then
               echo "::error::CFBundleVersion은 1 이상의 정수여야 합니다."
               exit 1
           fi
 
-          if ! git merge-base --is-ancestor "$RELEASE_SHA" refs/remotes/origin/main; then
-              echo "::error::배포할 커밋이 origin/main에 포함되어 있지 않습니다."
+          if [[ "$RELEASE_SHA" != "$(git rev-parse refs/remotes/origin/main)" ]]; then
+              echo "::error::main이 변경되었습니다. 최신 main에서 새로 실행해 주세요."
               exit 1
           fi
 
@@ -108,8 +109,8 @@ jobs:
 
           if git rev-parse --verify --quiet "refs/tags/$release_tag" >/dev/null; then
               tag_sha="$(git rev-list -n 1 "$release_tag")"
-              if [[ "$tag_sha" != "$RELEASE_SHA" ]]; then
-                  echo "::error::$release_tag 태그가 다른 커밋을 가리키고 있습니다."
+              if [[ "$tag_sha" != "$RELEASE_SHA" ]] || ! git diff --quiet -- Resources/Info.plist; then
+                  echo "::error::$release_tag 태그가 배포할 코드·버전과 다릅니다."
                   exit 1
               fi
           fi
@@ -231,7 +232,9 @@ jobs:
       # 로컬과 같은 스크립트로 테스트부터 서명·공증·staple까지 다시 수행한다.
       - name: Build, sign, and notarize
         shell: bash
-        run: ./scripts/package-release.sh
+        run: |
+          python3 scripts/test-prepare-release.py
+          ./scripts/package-release.sh
 
       # 최종 ZIP을 다시 풀어 서명, 공증 티켓, Gatekeeper와 체크섬을 재검증한다.
       - name: Verify release archive
@@ -257,6 +260,27 @@ jobs:
           xcrun stapler validate "$verify_root/CodexSwitch.app"
           spctl --assess --type execute --verbose=4 "$verify_root/CodexSwitch.app"
 
+      # 검증된 버전 변경과 태그를 함께 push한다. 빌드 중 main이 바뀌면 덮어쓰지 않고 실패한다.
+      - name: Save release version and tag
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
+        run: |
+          set -euo pipefail
+          gh auth setup-git
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if ! git diff --quiet -- Resources/Info.plist; then
+              git add Resources/Info.plist
+              git commit -m "chore: release $RELEASE_TAG" \
+                  -m $'## Summary\n\n공개 버전과 내부 빌드 번호를 검증된 배포 산출물에 맞춰 갱신.\n\n- 앱 버전과 릴리스 태그 일치'
+          fi
+          if ! git rev-parse --verify --quiet "refs/tags/$RELEASE_TAG" >/dev/null; then
+              git tag "$RELEASE_TAG"
+          fi
+          git push --atomic origin HEAD:refs/heads/main "refs/tags/$RELEASE_TAG"
+
       # 초안에는 사용자용 ZIP과 앱이 읽는 업데이트 피드만 올리고 원격 검증 후 공개한다.
       - name: Publish GitHub Release
         shell: bash
@@ -277,12 +301,13 @@ jobs:
           else
               gh release create "$RELEASE_TAG" \
                   --draft \
-                  --target "$GITHUB_SHA" \
+                  --verify-tag \
                   --title "CodexSwitch $RELEASE_VERSION" \
-                  --notes "**일반 사용자는 ZIP 파일만 다운로드하세요.**" \
-                  --generate-notes
+                  --notes-file "docs/releases/$RELEASE_VERSION.md"
           fi
 
+          # 재시도한 초안도 같은 버전의 설명 파일과 맞춘다.
+          gh release edit "$RELEASE_TAG" --notes-file "docs/releases/$RELEASE_VERSION.md"
           gh release upload "$RELEASE_TAG" "$archive" dist/appcast.xml --clobber
 
           uploaded_assets="$(
