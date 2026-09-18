@@ -12,7 +12,7 @@
   </p>
 </div>
 
-
+![CodexSwitch showing account switching, weekly usage, and reset credits with a sample account](docs/images/codexswitch-showcase-en.png)
 
 ## Features
 
