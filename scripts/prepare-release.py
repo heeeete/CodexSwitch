@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Actions에서 입력한 공개 버전과 내부 빌드 번호를 함께 갱신한다."""
+"""로컬 배포와 Actions에서 공개 버전과 내부 빌드 번호를 함께 갱신한다."""
 
 import plistlib
 import re

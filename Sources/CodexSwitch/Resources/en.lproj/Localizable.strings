@@ -97,7 +97,6 @@
 "쿠폰을 조회하지 못했어요. 새로고침해 주세요." = "Could not load reset credits. Please refresh.";
 "사용 가능한 쿠폰 없음" = "No available reset credits";
 "쿠폰 %@" = "Credit %@";
-"남은 시간" = "Time left";
 "현재 계정" = "Current account";
 "이 계정으로 전환" = "Switch to this account";
 "남음" = "left";

@@ -82,8 +82,6 @@ struct ResetCreditSection: View {
                                             .accessibilityHidden(true)
                                         Text(L10n.text("쿠폰 %@", String(index + 1))).font(.system(size: 13))
                                         Spacer(minLength: 4)
-                                        Text(L10n.text("남은 시간")).font(.system(size: 10))
-                                            .foregroundStyle(.secondary)
                                         Text(credit.remainingTime(at: context.date))
                                             .font(.system(size: 13, weight: .semibold, design: .monospaced))
                                             .frame(minWidth: 76, alignment: .trailing)

@@ -67,6 +67,7 @@ jobs:
         shell: bash
         run: |
           python3 scripts/test-prepare-release.py
+          python3 scripts/test-release.py
           ./scripts/package-release.sh
 
       # PR에는 산출물을 남기지 않고 main·수동 실행에서만 단기 테스트 ZIP을 제공한다.

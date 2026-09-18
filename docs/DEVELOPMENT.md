@@ -3,6 +3,9 @@
 사용자 설치와 사용법은 프로젝트 [README](../README.md)를 참고하세요. 이 문서는
 소스에서 앱을 빌드하고 내부 동작을 확인하려는 개발자를 위한 안내입니다.
 
+배포 절차와 버전 관리는 [배포 가이드](RELEASING.md), 버전별 공개 설명은
+[`docs/releases`](releases)에 작성합니다. 사용자용 README에는 설치·사용법을 유지합니다.
+
 ## 개발 환경
 
 - macOS 14 이상
@@ -40,6 +43,13 @@ Swift 테스트 전체를 실행합니다.
 
 ```bash
 swift test
+```
+
+배포 스크립트는 실제 GitHub 게시나 공증 없이 임시 Git 저장소에서 확인합니다.
+
+```bash
+python3 scripts/test-prepare-release.py
+python3 scripts/test-release.py
 ```
 
 빌드된 앱의 구조, 아키텍처, 아이콘, helper 버전, 외부 라이브러리 의존성, 코드
@@ -84,6 +94,7 @@ CI는 Apple Silicon용 앱을 ad-hoc 서명으로 조립한 뒤 Swift 테스트,
 | `scripts/build-app.sh` | SwiftPM 산출물을 macOS 앱 번들로 조립 |
 | `scripts/verify-release.sh` | 앱 구조와 독립 실행 조건 검증 |
 | `scripts/package-release.sh` | 테스트부터 서명·공증·ZIP 생성까지 처리 |
+| `scripts/release.sh` | 로컬에서 버전 갱신·패키징·GitHub 게시를 한 번에 실행 |
 | `.github/workflows/ci.yml` | PR·main의 테스트와 개발용 앱 생성 |
 | `.github/workflows/release.yml` | Developer ID 서명·공증과 GitHub Release 게시 |
 
