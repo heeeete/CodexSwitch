@@ -17,9 +17,10 @@
 ## Features
 
 - **Account switching** — Switch between saved accounts without opening a terminal.
-- **Usage overview** — See remaining Codex usage and the time until reset at a glance, with percentages and progress bars.
+- **Usage overview** — See remaining Codex usage, the time until reset, and an estimated daily allowance at a glance.
 - **Reset credits** — View the current account’s available credits in order of soonest expiry. Remaining time is shown in a compact format such as `5d 20h`, and credits are fetched automatically.
 - **Auto-refresh** — Refresh usage and reset credits every minute, even when the menu is closed. It is enabled by default, and your preference is saved between launches.
+- **Launch at login** — Start automatically when you log in to your Mac. Enabled by default; turn it off in Settings anytime.
 - **App updates** — Automatically check for updates and show a restart prompt at the bottom of the menu when an update is ready.
 - **Account management** — Add new accounts and remove accounts saved on this Mac.
 

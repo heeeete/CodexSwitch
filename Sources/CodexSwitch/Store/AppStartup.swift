@@ -68,6 +68,10 @@ final class AppStartup: NSObject, ObservableObject, NSApplicationDelegate, NSWin
     }
 
     private func startRuntime() {
+        #if !DEBUG
+        // 설치가 끝난 배포 앱만 등록하고 개발·테스트 실행본은 로그인 항목에 넣지 않는다.
+        LoginItemSettings.shared.enableByDefault()
+        #endif
         _ = accountStore
         _ = updateStore
         statusMenu = StatusMenuController(store: accountStore, updateStore: updateStore)

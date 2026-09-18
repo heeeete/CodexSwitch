@@ -222,6 +222,25 @@ final class AccountModelsTests: LocalizedTestCase {
         XCTAssertEqual(meter.resetCountdown(at: resetDate.addingTimeInterval(1)), "0m")
     }
 
+    // 하루 기준은 주간 창에만 표시하며 종료·누락된 초기화 시각에서는 계산하지 않는다.
+    func testDailyAllowanceUsesRemainingWeeklyQuotaAndTime() throws {
+        let now = Date(timeIntervalSince1970: 2_000_000)
+        func meter(minutes: Int = 10_080, used: Double = 38, seconds: Int64?) throws -> UsageMeter {
+            try XCTUnwrap(UsageMeter(window: UsageWindow(
+                usedPercent: used, windowMinutes: minutes,
+                resetsAt: seconds.map { Int64(now.timeIntervalSince1970) + $0 }
+            ), now: now))
+        }
+        XCTAssertEqual(try meter(seconds: 4 * 86_400 + 9 * 3_600).dailyAllowance(at: now), 14)
+        XCTAssertEqual(try meter(seconds: 86_400).dailyAllowance(at: now), 62)
+        XCTAssertEqual(try meter(used: 100, seconds: 2 * 86_400).dailyAllowance(at: now), 0)
+        XCTAssertNil(try meter(seconds: 86_399).dailyAllowance(at: now))
+        XCTAssertNil(try meter(seconds: nil).dailyAllowance(at: now))
+        XCTAssertNil(try meter(seconds: -1).dailyAllowance(at: now))
+        XCTAssertNil(try meter(minutes: 300, seconds: 5 * 3_600).dailyAllowance(at: now))
+        XCTAssertEqual(L10n.text("하루 약 %@%%씩 사용 가능", "14"), "하루 약 14%씩 사용 가능")
+    }
+
     // 기존 문구를 유지하면서 실제 조회 완료 시각을 기준으로 분·시간을 계산한다.
     func testAccountRefreshStatusAdvancesAtMinuteAndHourBoundaries() {
         let refreshedAt = Date(timeIntervalSince1970: 2_000_000)

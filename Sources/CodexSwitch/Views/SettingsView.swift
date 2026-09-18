@@ -1,15 +1,31 @@
 import SwiftUI
+import ServiceManagement
 
-// 업데이트 설정은 시스템 기본 폼과 컨트롤로 제공한다.
+// 앱 설정은 시스템 기본 폼과 컨트롤로 제공한다.
 struct SettingsView: View {
     @ObservedObject var updateStore: UpdateStore
     @ObservedObject var accountStore: AccountStore
     @ObservedObject private var language = LanguageSettings.shared
+    @ObservedObject private var loginItem = LoginItemSettings.shared
 
     var body: some View {
         Form {
-            // 시스템 기본 언어 또는 사용자가 고른 앱 언어만 변경한다.
+            // 로그인 항목은 macOS가 허용한 상태를 그대로 보여준다.
             Section {
+                Toggle(L10n.text("로그인 시 자동 실행"), isOn: Binding(
+                    get: { loginItem.status == .enabled },
+                    set: { loginItem.setEnabled($0) }
+                ))
+                if loginItem.status == .requiresApproval {
+                    Text(L10n.text("시스템 설정에서 자동 실행을 허용해 주세요."))
+                        .font(.callout).foregroundStyle(.secondary)
+                    Button(L10n.text("로그인 항목 설정 열기")) { SMAppService.openSystemSettingsLoginItems() }
+                }
+                if loginItem.hasError {
+                    Text(L10n.text("자동 실행 설정을 변경하지 못했어요. 다시 시도해 주세요."))
+                        .font(.callout).foregroundStyle(.secondary)
+                }
+                // 시스템 기본 언어 또는 사용자가 고른 앱 언어만 변경한다.
                 Picker(L10n.text("언어"), selection: $language.selection) {
                     Text(L10n.text("시스템 설정 따르기")).tag(AppLanguage.system)
                     Text("한국어").tag(AppLanguage.korean)
@@ -58,5 +74,9 @@ struct SettingsView: View {
         .frame(width: 460)
         .fixedSize(horizontal: false, vertical: true)
         .navigationTitle(L10n.text("CodexSwitch 설정"))
+        .onAppear { loginItem.refresh() }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+            loginItem.refresh()
+        }
     }
 }

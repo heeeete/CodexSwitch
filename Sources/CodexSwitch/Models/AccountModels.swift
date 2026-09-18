@@ -184,6 +184,14 @@ struct UsageMeter: Identifiable, Equatable, Sendable {
         }
     }
 
+    // 주간 잔여량을 남은 일수로 나누며 하루 미만이거나 초기화 시각이 없으면 생략한다.
+    func dailyAllowance(at now: Date = Date()) -> Int? {
+        guard windowMinutes == 10_080, let resetsAt else { return nil }
+        let days = resetsAt.timeIntervalSince(now) / 86_400
+        guard days >= 1 else { return nil }
+        return Int((Double(remainingPercent) / days).rounded())
+    }
+
     // 정확한 reset timestamp를 메뉴에 맞는 짧은 남은 시간으로 바꾼다.
     func resetCountdown(at now: Date = Date()) -> String? {
         guard let resetsAt else { return nil }

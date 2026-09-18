@@ -288,8 +288,15 @@ private struct DetailedUsageMeterRow: View {
             }
             .frame(height: 10)
             .accessibilityHidden(true)
-            Text(L10n.text("%@%% 사용", String(100 - meter.remainingPercent)))
-                .font(.system(size: 11)).foregroundStyle(.secondary)
+            HStack {
+                Text(L10n.text("%@%% 사용", String(100 - meter.remainingPercent)))
+                Spacer(minLength: 8)
+                if let daily = meter.dailyAllowance(at: date) {
+                    Text(L10n.text("하루 약 %@%%씩 사용 가능", String(daily)))
+                        .fontWeight(.medium)
+                }
+            }
+            .font(.system(size: 11)).foregroundStyle(.secondary)
         }
         .accessibilityElement(children: .combine)
     }

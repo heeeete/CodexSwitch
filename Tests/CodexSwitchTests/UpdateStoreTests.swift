@@ -109,7 +109,8 @@ final class UpdateStoreTests: LocalizedTestCase {
                 let size = view.fittingSize
                 XCTAssertEqual(size.width, 460, accuracy: 1)
                 XCTAssertGreaterThan(size.height, 160)
-                XCTAssertLessThan(size.height, 450)
+                // 자동 실행 옵션 한 줄과 업데이트 재시작 안내가 함께 들어갈 높이를 확보한다.
+                XCTAssertLessThan(size.height, 500)
                 if let root = ProcessInfo.processInfo.environment["CODEXSWITCH_SETTINGS_SNAPSHOT_ROOT"] {
                     view.frame = NSRect(origin: .zero, size: size)
                     view.layoutSubtreeIfNeeded()
