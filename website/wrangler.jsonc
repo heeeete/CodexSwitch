@@ -1,0 +1,10 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "codexswitch",
+  "compatibility_date": "2026-09-19",
+  "workers_dev": true,
+  // Astro가 생성한 정적 파일을 그대로 제공한다.
+  "assets": {
+    "directory": "./dist"
+  }
+}

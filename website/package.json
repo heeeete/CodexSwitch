@@ -10,11 +10,15 @@
     "test": "node --test",
     "dev": "astro dev --host 127.0.0.1",
     "build": "astro build",
-    "preview": "astro preview --host 127.0.0.1"
+    "preview": "astro preview --host 127.0.0.1",
+    "deploy": "npm run build && wrangler deploy"
   },
   "dependencies": {
     "astro": "^7.3.3",
     "framework7-icons": "^5.0.5",
     "simple-icons": "^16.31.0"
+  },
+  "devDependencies": {
+    "wrangler": "^4.135.0"
   }
 }

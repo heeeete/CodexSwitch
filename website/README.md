@@ -1,6 +1,8 @@
 # CodexSwitch website
 
 앱 저장소의 `website/`에서 독립적으로 빌드·배포하는 Astro 정적 랜딩 페이지.
+공개 주소: [codexswitch.mkoiui98.workers.dev](https://codexswitch.mkoiui98.workers.dev/)
+
 한국어 `/`, 영어 `/en/`을 제공합니다. 앱의 Swift 빌드·서명·릴리스와 분리됩니다.
 첫 방문에는 브라우저의 우선 언어가 한국어면 한국어, 그 외에는 영어로 바로 이동합니다.
 사용자가 EN/KO로 선택한 언어는 기억합니다. 명시적인 `/en/` 링크는 영어로 열립니다.
@@ -18,6 +20,15 @@ npm run dev
 
 `npm run build`로 `dist/`를 생성하고 `npm run preview`로 확인합니다.
 정적 호스팅 설정은 루트 `website`, 빌드 `npm run build`, 출력 `dist`입니다.
+Cloudflare Workers Static Assets로 배포하며, 설정은 `wrangler.jsonc`에서 관리합니다.
+최초 한 번 아래 명령으로 배포에 필요한 권한을 연결합니다.
+
+```bash
+npx wrangler login --scopes account:read user:read workers_scripts:write
+npm run deploy
+```
+
+서버 코드나 유료 리소스 없이 `workers.dev` 주소로 정적 파일을 제공합니다.
 다운로드 링크는 GitHub의 최신 릴리스로 연결됩니다.
 실제 배포 도메인이 정해지면 canonical, hreflang, 공유 이미지 URL을 추가하세요.
 
