@@ -3,8 +3,8 @@
 <div align="center">
   <img src="docs/images/codexswitch-icon.png" width="104" alt="CodexSwitch 앱 아이콘">
   <h1>CodexSwitch</h1>
-  <p><strong>계정은 바꾸고, 작업 흐름은 그대로.</strong></p>
-  <p>여러 ChatGPT/Codex 계정과 사용량을 메뉴바에서 확인하고 바로 전환하세요.</p>
+  <p><strong>1초 만에, ChatGPT·Codex 실제 계정 전환.</strong></p>
+  <p>메뉴바에서 고르면, 선택한 계정으로 ChatGPT가 다시 열립니다.</p>
   <p>
     <a href="https://github.com/heeeete/CodexSwitch/releases/latest"><img src="https://img.shields.io/badge/Download-latest-5865E8?style=flat-square&logo=apple&logoColor=white" alt="최신 버전 다운로드"></a>
     <img src="https://img.shields.io/badge/macOS-14%2B-30363D?style=flat-square&logo=macos&logoColor=white" alt="macOS 14 이상">

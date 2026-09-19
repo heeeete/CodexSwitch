@@ -41,5 +41,9 @@ CodexSwitch-*.zip.sha256
 .LSOverride
 *.log
 
-# Local design review notes
-/design-qa.md
+# Local design tooling and review notes (at any depth)
+.impeccable/
+design-qa.md
+
+# Generated image drafts and production intermediates
+/output/
