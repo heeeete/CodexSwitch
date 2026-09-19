@@ -1,0 +1,59 @@
+---
+import { copy, type Language } from '../data/copy';
+interface Props { lang: Language }
+const { lang } = Astro.props;
+const t = copy[lang];
+const absolute = (path: string) => new URL(path, Astro.site).href;
+const canonical = absolute(Astro.url.pathname);
+const image = absolute('/images/social-card.png');
+const imageAlt = 'CodexSwitch — Switch ChatGPT accounts. From your menu bar.';
+
+// 사이트 이름과 언어별 페이지의 관계를 검색엔진에 제공한다.
+const structuredData = {
+  '@context': 'https://schema.org',
+  '@graph': [
+    {
+      '@type': 'WebSite',
+      '@id': absolute('/#website'),
+      name: 'CodexSwitch',
+      url: absolute('/'),
+      inLanguage: ['ko', 'en'],
+    },
+    {
+      '@type': 'WebPage',
+      name: t.title,
+      url: canonical,
+      description: t.description,
+      inLanguage: lang,
+      isPartOf: { '@id': absolute('/#website') },
+    },
+  ],
+};
+---
+<title>{t.title}</title>
+<meta name="description" content={t.description} />
+<!-- 공개 소유권 확인 값이며 Search Console의 지속적인 검증에 사용한다. -->
+<meta name="google-site-verification" content="GfQDuPCVLf1MuV1_QdLQNgoo75mK2BRe9jc8s_eYIy4" />
+<link rel="canonical" href={canonical} />
+<!-- 모든 언어 페이지가 서로와 기본 진입 주소를 동일하게 가리킨다. -->
+<link rel="alternate" hreflang="ko" href={absolute('/ko/')} />
+<link rel="alternate" hreflang="en" href={absolute('/en/')} />
+<link rel="alternate" hreflang="x-default" href={absolute('/')} />
+<meta property="og:type" content="website" />
+<meta property="og:site_name" content="CodexSwitch" />
+<meta property="og:title" content={t.title} />
+<meta property="og:description" content={t.description} />
+<meta property="og:url" content={canonical} />
+<meta property="og:locale" content={lang === 'ko' ? 'ko_KR' : 'en_US'} />
+<meta property="og:locale:alternate" content={lang === 'ko' ? 'en_US' : 'ko_KR'} />
+<meta property="og:image" content={image} />
+<meta property="og:image:type" content="image/png" />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
+<meta property="og:image:alt" content={imageAlt} />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content={t.title} />
+<meta name="twitter:description" content={t.description} />
+<meta name="twitter:image" content={image} />
+<meta name="twitter:image:alt" content={imageAlt} />
+<script is:inline type="application/ld+json" set:html={JSON.stringify(structuredData).replace(/</g, '\\u003c')} />

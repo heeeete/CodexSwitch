@@ -9,7 +9,7 @@
   "scripts": {
     "test": "node --test",
     "dev": "astro dev --host 127.0.0.1",
-    "build": "astro build",
+    "build": "astro build && node scripts/check-seo.mjs",
     "preview": "astro preview --host 127.0.0.1",
     "deploy": "npm run build && wrangler deploy"
   },

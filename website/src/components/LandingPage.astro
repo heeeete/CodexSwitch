@@ -1,5 +1,6 @@
 ---
 import '../styles/global.css';
+import Seo from './Seo.astro';
 import Icon from './Icon.astro';
 import AppMark from './AppMark.astro';
 import AppPreview from './AppPreview.astro';
@@ -16,23 +17,17 @@ const d = demoCopy[lang];
 const ko = lang === 'ko';
 const repo = 'https://github.com/heeeete/CodexSwitch';
 const release = `${repo}/releases/latest`;
-const home = ko ? '/' : '/en/';
+const home = `/${lang}/`;
 ---
 <!doctype html>
 <html lang={lang}>
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="description" content={t.description} />
     <meta name="theme-color" content="#0b0c0e" />
-    <meta property="og:type" content="website" />
-    <meta property="og:title" content={t.title} />
-    <meta property="og:description" content={t.description} />
-    <meta property="og:locale" content={ko ? 'ko_KR' : 'en_US'} />
-    <meta name="twitter:card" content="summary" />
+    <Seo lang={lang} />
     <link rel="icon" type="image/png" href="/images/app-icon.png" />
-    <title>{t.title}</title>
-    <!-- 본문을 그리기 전에 언어를 선택해 기본 한국어 화면의 깜박임을 줄인다. -->
+    <!-- 기본 주소에서만 언어를 감지하고, 언어별 주소는 그대로 유지한다. -->
     <script is:inline set:html={languageScript} />
     <!-- 기본 화면은 레퍼런스의 다크 톤을 따르고, 직접 선택한 테마만 복원한다. -->
     <script is:inline>
@@ -49,7 +44,7 @@ const home = ko ? '/' : '/en/';
       <nav class="main-nav" aria-label={ko ? '주요 메뉴' : 'Main navigation'}><a href="#features">{t.nav[0]}</a><a href="#setup">{t.nav[1]}</a><a href="#faq">FAQ</a></nav>
       <div class="header-actions">
         <button class="icon-button theme-toggle" type="button" aria-label={t.themeLight} data-dark-label={t.theme} data-light-label={t.themeLight}><Icon name="sun" class="sun-icon" /><Icon name="moon" class="moon-icon" /></button>
-        <a class="language-link" href={ko ? '/en/?lang=en' : '/?lang=ko'} aria-label={t.language}>{ko ? 'EN' : 'KO'}</a>
+        <a class="language-link" href={ko ? '/en/' : '/ko/'} lang={ko ? 'en' : 'ko'} hreflang={ko ? 'en' : 'ko'} aria-label={t.language}>{ko ? 'EN' : 'KO'}</a>
         <a class="header-github icon-button" href={repo} aria-label="GitHub"><Icon name="github" /></a>
         <a class="button button-small" href={release}>{t.download}<Icon name="down" /></a>
       </div>

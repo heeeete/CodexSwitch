@@ -1,8 +1,8 @@
 // README에 확인된 제품 동작만 두 언어로 제공한다.
 export const copy = {
   ko: {
-    title: 'CodexSwitch | ChatGPT 계정 전환, 메뉴바에서 바로.',
-    description: '여러 ChatGPT·Codex 계정과 남은 사용량을 Mac 메뉴바에서 확인하고 전환하세요. macOS 14 이상, Apple Silicon 지원.',
+    title: 'CodexSwitch — Mac용 ChatGPT·Codex 계정 전환',
+    description: 'Mac 메뉴바에서 ChatGPT·Codex 계정을 전환하세요. 선택한 계정으로 ChatGPT가 다시 열리고, 계정별 남은 사용량과 초기화 시간을 한눈에 확인할 수 있습니다. macOS 14 이상, Apple Silicon 지원.',
     skip: '본문으로 바로가기', nav: ['기능', '사용 방법', 'FAQ'], download: '다운로드',
     theme: '어두운 테마', themeLight: '밝은 테마', language: 'Read in English',
     headline: ['ChatGPT 계정 전환,', '메뉴바에서 바로.'],
@@ -39,8 +39,8 @@ export const copy = {
     legal: 'OpenAI와 제휴하거나 OpenAI가 보증하는 공식 제품이 아닙니다.',
   },
   en: {
-    title: 'CodexSwitch | Switch ChatGPT accounts from your menu bar.',
-    description: 'Switch ChatGPT and Codex accounts, check remaining usage, and track resets from your Mac menu bar. For Apple Silicon Macs running macOS 14 or later.',
+    title: 'CodexSwitch — ChatGPT & Codex Account Switcher for Mac',
+    description: 'Switch ChatGPT and Codex accounts from your Mac menu bar. ChatGPT reopens with your chosen account. Check remaining usage and reset times at a glance.',
     skip: 'Skip to content', nav: ['Features', 'Get started', 'FAQ'], download: 'Download',
     theme: 'Dark theme', themeLight: 'Light theme', language: '한국어로 보기',
     headline: ['Switch ChatGPT accounts.', 'From your menu bar.'],
