@@ -19,9 +19,24 @@ npm run dev
 ```
 
 `npm run build`로 `dist/`를 생성하고 `npm run preview`로 확인합니다.
-정적 호스팅 설정은 루트 `website`, 빌드 `npm run build`, 출력 `dist`입니다.
 Cloudflare Workers Static Assets로 배포하며, 설정은 `wrangler.jsonc`에서 관리합니다.
-최초 한 번 아래 명령으로 배포에 필요한 권한을 연결합니다.
+GitHub의 `main`에 `website/` 변경을 푸시하면 Cloudflare가 테스트·빌드 후 자동 배포합니다.
+앱의 Swift 코드만 변경한 경우에는 웹사이트 빌드를 실행하지 않습니다.
+
+Cloudflare Builds 설정:
+
+| 항목 | 값 |
+| --- | --- |
+| 저장소 | `heeeete/CodexSwitch` |
+| 프로덕션 브랜치 | `main` |
+| 프로젝트 폴더 | `website` |
+| 빌드 명령 | `npm test && npm run build` |
+| 배포 명령 | `npx wrangler deploy` |
+| 변경 감지 경로 | `website/*` |
+| 다른 브랜치 빌드 | 비활성화 |
+
+Wrangler는 Cloudflare 빌드 서버에서도 사용하는 배포 도구입니다.
+로컬에서 직접 배포해야 하는 경우에만 아래 명령을 사용합니다.
 
 ```bash
 npx wrangler login --scopes account:read user:read workers_scripts:write
