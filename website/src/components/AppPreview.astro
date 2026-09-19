@@ -1,0 +1,40 @@
+---
+import AppMark from './AppMark.astro';
+import Icon from './Icon.astro';
+import UsageMeter from './UsageMeter.astro';
+import CreditList from './CreditList.astro';
+import { demoAccounts, demoCopy } from '../data/demo';
+import type { Language } from '../data/copy';
+const { lang } = Astro.props as { lang: Language };
+const d = demoCopy[lang];
+---
+<!-- 실제 372px 네이티브 메뉴를 HTML로 재현한다. 모든 상태 변경은 예시 데이터 안에서만 일어난다. -->
+<div id="app-preview" class="native-menu" data-app-menu>
+  <div class="app-header"><AppMark /><div><strong>CodexSwitch</strong><span>{d.accounts}</span></div><button class="refresh-control" type="button" data-refresh aria-label={d.refresh}><Icon name="refresh" /></button></div>
+  <div class="native-divider"></div>
+  <div class="current-account"><strong data-current-email>{demoAccounts[0].email}</strong><span class="plan-badge">PRO ×20</span><span class="refresh-status" data-refresh-status>{d.refreshed}</span></div>
+  <UsageMeter lang={lang} />
+  <div class="native-divider"></div>
+  <CreditList lang={lang} />
+  <div class="native-divider"></div>
+  <div class="native-preferences">
+    <label class="preference-row"><span>{d.auto}<small>{d.minute}</small></span><input type="checkbox" role="switch" checked /><span class="native-switch" aria-hidden="true"></span></label>
+    <label class="preference-row"><span>{d.reopen}</span><input type="checkbox" role="switch" data-reopen-chatgpt checked /><span class="native-switch" aria-hidden="true"></span></label>
+  </div>
+  <div class="native-divider"></div>
+  <div class="native-commands">
+    <div class="account-submenu-anchor">
+      <button class="native-command switch-command" type="button" data-switch-menu data-invite aria-expanded="false" aria-haspopup="menu" aria-controls="account-submenu"><Icon name="users" /><span>{d.switch}</span><small class="switch-hint" aria-hidden="true">{d.clickHint}</small><Icon name="caret" /></button>
+      <div id="account-submenu" class="account-submenu" role="menu" aria-label={d.switch} hidden>
+        {demoAccounts.map((account, i) => <button type="button" role="menuitemradio" aria-checked={i === 0 ? 'true' : 'false'} data-account={i} tabindex={i === 0 ? 0 : -1}><Icon name="check" /><span>{account.email}</span><small>{account.remaining}%</small></button>)}
+      </div>
+    </div>
+    <button class="native-command" type="button" data-demo-hint><Icon name="userPlus" /><span>{d.add}</span></button>
+    <button class="native-command" type="button" data-demo-hint><Icon name="userMinus" /><span>{d.remove}</span><Icon name="caret" /></button>
+  </div>
+  <div class="native-divider"></div>
+  <div class="native-commands native-last">
+    <button class="native-command" type="button" data-demo-hint><Icon name="settings" /><span>{d.settings}</span><kbd>⌘ ,</kbd></button>
+    <button class="native-command" type="button" data-demo-close><Icon name="power" /><span>{d.quit}</span><kbd>⌘ Q</kbd></button>
+  </div>
+</div>

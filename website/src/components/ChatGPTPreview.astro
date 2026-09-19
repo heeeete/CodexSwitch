@@ -1,0 +1,37 @@
+---
+import Icon from './Icon.astro';
+import { demoAccounts, demoCopy } from '../data/demo';
+import type { Language } from '../data/copy';
+const { lang } = Astro.props as { lang: Language };
+const d = demoCopy[lang];
+const ko = lang === 'ko';
+---
+<!-- 실제 인증과 연결되지 않은 ChatGPT 창. 프로필만 계정 전환 데모와 동기화한다. -->
+<div class="chatgpt-position">
+  <section class="chatgpt-window" data-chatgpt-window aria-label={d.chatgptPreview}>
+    <div class="chatgpt-titlebar" aria-hidden="true"><div class="window-lights"><i></i><i></i><i></i></div><Icon name="sidebar" /></div>
+    <div class="chatgpt-sidebar">
+      <div class="chatgpt-brand"><Icon name="openai" /><strong>ChatGPT</strong></div>
+      <div class="chatgpt-history" aria-hidden="true">
+        <span class="chatgpt-nav-row"><Icon name="compose" />{ko ? '새 채팅' : 'New chat'}</span>
+        <span class="chatgpt-nav-row"><Icon name="search" />{ko ? '채팅 검색' : 'Search chats'}</span>
+        <small>{ko ? '오늘' : 'Today'}</small>
+        <span>{ko ? '아이디어 정리하기' : 'Organize ideas'}</span>
+        <span>{ko ? '코드 리뷰 도움' : 'Code review help'}</span>
+        <small>{ko ? '지난 7일' : 'Previous 7 days'}</small>
+        <span>{ko ? '회의 요약' : 'Meeting notes'}</span>
+        <span>{ko ? '여행 계획' : 'Travel plans'}</span>
+      </div>
+      <div class="chatgpt-profile" data-chatgpt-profile>
+        <span class="profile-avatar" data-chatgpt-avatar aria-hidden="true">D</span>
+        <div><strong data-chatgpt-name>{d.accountNames[0]}</strong><span data-chatgpt-email>{demoAccounts[0].email}</span></div>
+      </div>
+    </div>
+    <div class="chatgpt-main" aria-hidden="true">
+      <span class="chatgpt-window-title">ChatGPT</span>
+      <p>{ko ? '무엇을 도와드릴까요?' : 'What can I help with?'}</p>
+      <div class="chatgpt-composer"><Icon name="plus" /><span>{ko ? '메시지 보내기' : 'Message ChatGPT'}</span><Icon name="up" /></div>
+    </div>
+  </section>
+  <div class="chatgpt-closed" data-chatgpt-closed hidden><Icon name="openai" /><p>{d.closed}</p><button class="button" type="button" data-open-chatgpt>{d.openChatGPT}<Icon name="arrow" /></button></div>
+</div>

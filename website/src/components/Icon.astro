@@ -1,0 +1,40 @@
+---
+import apple from 'simple-icons/icons/apple.svg?raw';
+import github from 'simple-icons/icons/github.svg?raw';
+import arrow from 'framework7-icons/svg/arrow_up_right.svg?raw';
+import down from 'framework7-icons/svg/arrow_down.svg?raw';
+import right from 'framework7-icons/svg/arrow_right.svg?raw';
+import sun from 'framework7-icons/svg/sun_max.svg?raw';
+import moon from 'framework7-icons/svg/moon.svg?raw';
+import plus from 'framework7-icons/svg/plus.svg?raw';
+import check from 'framework7-icons/svg/checkmark.svg?raw';
+import shield from 'framework7-icons/svg/checkmark_shield.svg?raw';
+import swap from 'framework7-icons/svg/arrow_left_right.svg?raw';
+import download from 'framework7-icons/svg/arrow_down_to_line.svg?raw';
+import refresh from 'framework7-icons/svg/arrow_clockwise.svg?raw';
+import ticket from 'framework7-icons/svg/ticket.svg?raw';
+import users from 'framework7-icons/svg/person_2.svg?raw';
+import userPlus from 'framework7-icons/svg/person_badge_plus.svg?raw';
+import userMinus from 'framework7-icons/svg/person_badge_minus.svg?raw';
+import settings from 'framework7-icons/svg/gear_alt.svg?raw';
+import power from 'framework7-icons/svg/power.svg?raw';
+import caret from 'framework7-icons/svg/chevron_right.svg?raw';
+import wifi from 'framework7-icons/svg/wifi.svg?raw';
+import batterySource from 'framework7-icons/svg/battery_100.svg?raw';
+import controls from '../assets/icons/control-centre.svg?raw';
+import lock from 'framework7-icons/svg/lock.svg?raw';
+import openai from '../assets/icons/openai.svg?raw';
+import play from 'framework7-icons/svg/play_circle.svg?raw';
+import search from 'framework7-icons/svg/search.svg?raw';
+import compose from 'framework7-icons/svg/square_pencil.svg?raw';
+import sidebar from 'framework7-icons/svg/sidebar_left.svg?raw';
+import up from 'framework7-icons/svg/arrow_up.svg?raw';
+
+// 배터리의 원본 경로는 유지하고 빈 상하 여백만 줄여 가로형 실루엣을 제 크기로 표시한다.
+const battery = batterySource.replace('viewBox="0 0 56 56"', 'viewBox="0 12 56 32"');
+// 브랜드는 Simple Icons, UI는 Framework7, 제어 센터는 출처가 기록된 원본 SVG를 사용한다.
+const icons = { apple, arrow, down, right, github, sun, moon, plus, check, shield, swap, download, refresh, ticket, users, userPlus, userMinus, settings, power, caret, wifi, battery, controls, lock, openai, play, search, compose, sidebar, up };
+interface Props { name: keyof typeof icons; class?: string }
+const { name, class: className = '' } = Astro.props;
+---
+<span class:list={['icon', `icon-${name}`, className]} aria-hidden="true" set:html={icons[name]} />

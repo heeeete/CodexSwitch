@@ -1,0 +1,115 @@
+---
+import '../styles/global.css';
+import Icon from './Icon.astro';
+import AppMark from './AppMark.astro';
+import AppPreview from './AppPreview.astro';
+import ChatGPTPreview from './ChatGPTPreview.astro';
+import languageScript from '../scripts/language.js?raw';
+import UsageMeter from './UsageMeter.astro';
+import CreditList from './CreditList.astro';
+import { copy, type Language } from '../data/copy';
+import { demoCopy } from '../data/demo';
+interface Props { lang: Language }
+const { lang } = Astro.props;
+const t = copy[lang];
+const d = demoCopy[lang];
+const ko = lang === 'ko';
+const repo = 'https://github.com/heeeete/CodexSwitch';
+const release = `${repo}/releases/latest`;
+const home = ko ? '/' : '/en/';
+---
+<!doctype html>
+<html lang={lang}>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content={t.description} />
+    <meta name="theme-color" content="#0b0c0e" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content={t.title} />
+    <meta property="og:description" content={t.description} />
+    <meta property="og:locale" content={ko ? 'ko_KR' : 'en_US'} />
+    <meta name="twitter:card" content="summary" />
+    <link rel="icon" type="image/png" href="/images/app-icon.png" />
+    <title>{t.title}</title>
+    <!-- 본문을 그리기 전에 언어를 선택해 기본 한국어 화면의 깜박임을 줄인다. -->
+    <script is:inline set:html={languageScript} />
+    <!-- 기본 화면은 레퍼런스의 다크 톤을 따르고, 직접 선택한 테마만 복원한다. -->
+    <script is:inline>
+      try {
+        const theme = localStorage.getItem('codexswitch-theme');
+        if (theme === 'dark' || theme === 'light') document.documentElement.dataset.theme = theme;
+      } catch { /* 저장소 없이도 기본 테마를 표시한다. */ }
+    </script>
+  </head>
+  <body>
+    <a class="skip-link" href="#main">{t.skip}</a>
+    <header class="site-header shell">
+      <a class="brand" href={home}><AppMark monochrome /><span>CodexSwitch</span></a>
+      <nav class="main-nav" aria-label={ko ? '주요 메뉴' : 'Main navigation'}><a href="#features">{t.nav[0]}</a><a href="#setup">{t.nav[1]}</a><a href="#faq">FAQ</a></nav>
+      <div class="header-actions">
+        <button class="icon-button theme-toggle" type="button" aria-label={t.themeLight} data-dark-label={t.theme} data-light-label={t.themeLight}><Icon name="sun" class="sun-icon" /><Icon name="moon" class="moon-icon" /></button>
+        <a class="language-link" href={ko ? '/en/?lang=en' : '/?lang=ko'} aria-label={t.language}>{ko ? 'EN' : 'KO'}</a>
+        <a class="header-github icon-button" href={repo} aria-label="GitHub"><Icon name="github" /></a>
+        <a class="button button-small" href={release}>{t.download}<Icon name="down" /></a>
+      </div>
+    </header>
+    <main id="main">
+      <!-- 선택한 구도처럼 Mac 왼쪽을 크롭하고, 소개 문구는 화면 밖에 둔다. -->
+      <section class="hero" aria-labelledby="hero-title">
+        <div class="hero-layout">
+          <div class="hero-copy">
+            <div class="hero-product"><AppMark class="hero-app-icon" /><span>CodexSwitch for Mac</span></div>
+            <h1 id="hero-title"><span>{t.headline[0]}</span><span>{t.headline[1]}</span></h1>
+            <p class="hero-description">{t.intro}</p>
+            <div class="hero-actions"><a class="button" href={release}><Icon name="apple" />{ko ? 'Mac용 다운로드' : 'Download for Mac'}<Icon name="down" /></a><a class="text-link hero-source" href={repo}><Icon name="github" />GitHub<Icon name="arrow" /></a></div>
+            <p class="hero-compatibility">macOS 14+<span>·</span>Apple Silicon</p>
+            <button class="demo-invite" type="button" data-try-switch><Icon name="play" /><span>{d.trySwitch}</span><Icon name="right" /></button>
+          </div>
+          <div class="mac-crop"><div class="mac-display"><div class="mac-screen">
+          <div class="camera-notch" aria-hidden="true"><i></i></div>
+          <div class="mac-menubar">
+            <div class="mac-menu-right">
+              <button class="menubar-app" type="button" data-menubar-toggle aria-expanded="true" aria-controls="app-preview" aria-label={`${d.menu}: 62%`}><AppMark monochrome /><span data-menubar-remaining>62%</span></button>
+              <div class="mac-system-icons" aria-hidden="true"><Icon name="wifi" /><Icon name="battery" /><Icon name="controls" /></div><time aria-label="9:41">9:41</time>
+            </div>
+          </div>
+          <div class="desktop-content" id="switch-demo">
+            <ChatGPTPreview lang={lang} />
+            <div class="demo-position"><AppPreview lang={lang} /></div>
+          </div>
+          <div class="demo-result" data-demo-result data-state="idle">
+            <div class="demo-status" role="status" aria-live="polite"><Icon name="check" /><p data-demo-feedback></p></div>
+          </div>
+          </div></div></div>
+        </div>
+      </section>
+      <!-- 핵심 수치를 재사용 가능한 네이티브 컴포넌트로 보여준다. -->
+      <section id="features" class="features shell section" aria-labelledby="features-title">
+        <div class="section-heading"><h2 id="features-title">{t.featureTitle}</h2><p>{t.featureIntro}</p></div>
+        <div class="feature-pair">
+          <article class="feature-story"><div class="feature-proof usage-proof"><div class="detail-surface"><UsageMeter lang={lang} /></div></div><h3>{t.features[0].title}</h3><p>{t.features[0].text}</p></article>
+          <article class="feature-story"><div class="feature-proof credit-proof"><div class="detail-surface"><CreditList lang={lang} /></div></div><h3>{t.features[1].title}</h3><p>{t.features[1].text}</p></article>
+        </div>
+        <div class="quiet-features">
+          <article><Icon name="lock" /><div><h3>{ko ? '내 계정은 내 Mac 안에.' : 'Your accounts stay on your Mac.'}</h3><p>{t.privacyText}</p><a class="text-link" href="#privacy-answer">{t.privacyLink}<Icon name="arrow" /></a></div></article>
+          <article><Icon name="refresh" /><div><h3>{ko ? '사용량 확인은 알아서.' : 'Always up to date.'}</h3><p>{t.refreshText}</p></div></article>
+        </div>
+      </section>
+      <!-- 설치 순서와 전환 뒤 CLI 재시작 조건을 함께 안내한다. -->
+      <section id="setup" class="setup section" aria-labelledby="setup-title"><div class="shell">
+        <div class="section-heading"><h2 id="setup-title">{t.setupTitle}</h2><p>{t.setupIntro}</p></div>
+        <ol class="setup-list">{t.steps.map((step, i) => <li><div class="step-symbol"><Icon name={i === 0 ? 'download' : i === 1 ? 'users' : 'swap'} /></div><h3>{step.title}</h3><p>{step.text}</p></li>)}</ol>
+        <p class="signed-note"><Icon name="shield" />{t.requirements[2]}</p>
+      </div></section>
+      <!-- 네이티브 details로 JavaScript 없이도 FAQ를 읽을 수 있다. -->
+      <section id="faq" class="faq shell section" aria-labelledby="faq-title">
+        <div class="faq-heading"><h2 id="faq-title">{t.faqTitle}</h2><a class="text-link" href={`${repo}/issues`}>{t.faqLink}<Icon name="arrow" /></a></div>
+        <div class="faq-list">{t.faqs.map((faq, i) => <details id={i === 2 ? 'privacy-answer' : undefined}><summary>{faq.q}<Icon name="plus" /></summary><p>{faq.a}</p></details>)}</div>
+      </section>
+      <section class="closing shell" aria-labelledby="closing-title"><AppMark /><h2 id="closing-title">{t.closingTitle}</h2><p>{t.closingText}</p><a class="button" href={release}><Icon name="apple" />{ko ? 'Mac용 다운로드' : 'Download for Mac'}<Icon name="down" /></a></section>
+    </main>
+    <footer class="site-footer shell"><div class="footer-top"><a class="brand" href={home}><AppMark monochrome /><span>CodexSwitch</span></a><p>{t.footerTag}</p><div class="footer-links"><a href={`${repo}/releases`}>{t.release}</a><a href={`${repo}/blob/main/THIRD_PARTY_NOTICES.md`}>{t.notices}</a><a href={repo} aria-label="GitHub"><Icon name="github" /></a></div></div><p class="legal">{t.legal}</p></footer>
+    <script>import '../scripts/site';</script>
+  </body>
+</html>

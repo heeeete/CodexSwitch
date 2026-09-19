@@ -1,0 +1,20 @@
+{
+  "name": "codexswitch-website",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "test": "node --test",
+    "dev": "astro dev --host 127.0.0.1",
+    "build": "astro build",
+    "preview": "astro preview --host 127.0.0.1"
+  },
+  "dependencies": {
+    "astro": "^7.3.3",
+    "framework7-icons": "^5.0.5",
+    "simple-icons": "^16.31.0"
+  }
+}

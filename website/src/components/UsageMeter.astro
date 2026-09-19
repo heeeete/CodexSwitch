@@ -1,0 +1,16 @@
+---
+import { demoCopy } from '../data/demo';
+import type { Language } from '../data/copy';
+const { lang } = Astro.props as { lang: Language };
+const d = demoCopy[lang];
+---
+<!-- AccountOverview.swift의 단일 사용량 창을 같은 계층과 간격으로 재현한다. -->
+<div class="usage-meter">
+  <span class="meter-label">{d.weekly}</span>
+  <div class="meter-numbers">
+    <div class="meter-remaining"><strong data-remaining>62%</strong><span>{d.left}</span></div>
+    <div class="meter-reset"><span>{d.resets}</span><strong data-reset>4d 9h</strong></div>
+  </div>
+  <div class="usage-track" aria-hidden="true"><div data-usage-fill style="--remaining: 62%"></div></div>
+  <div class="meter-foot"><span data-used>38{d.used}</span><span data-daily>{d.daily.replace('{value}', '14')}</span></div>
+</div>

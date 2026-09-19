@@ -1,0 +1,15 @@
+---
+import Icon from './Icon.astro';
+import { demoCopy, demoAccounts } from '../data/demo';
+import type { Language } from '../data/copy';
+const { lang } = Astro.props as { lang: Language };
+const d = demoCopy[lang];
+---
+<!-- 쿠폰이 없을 때도 같은 공간을 유지해 계정 전환 중 메뉴 높이가 흔들리지 않는다. -->
+<div class="credit-section">
+  <div class="credit-heading"><strong>{d.credits}</strong><span><span data-credit-count>3</span>{lang === 'en' ? ' ' : ''}{d.count}</span></div>
+  <div class="credit-list">
+    {demoAccounts[0].credits.map((time, i) => <div class="credit-row" data-credit-row><Icon name="ticket" /><span>{d.credit} {i + 1}</span><strong data-credit-time>{time}</strong></div>)}
+    <p class="credit-empty" data-credit-empty hidden>{d.noCredits}</p>
+  </div>
+</div>
