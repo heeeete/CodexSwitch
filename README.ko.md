@@ -12,8 +12,6 @@
   </p>
 </div>
 
-![예시 계정으로 보는 CodexSwitch의 계정 전환, 주간 사용량, 초기화 쿠폰 화면](docs/images/codexswitch-showcase-ko.png)
-
 ## 주요 기능
 
 - **계정 전환** — 터미널을 열지 않고 저장된 계정을 바로 바꿉니다.
