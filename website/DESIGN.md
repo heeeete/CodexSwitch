@@ -115,8 +115,16 @@ the display. At 900px and below, copy comes first followed by the left-cropped d
 with a readable unscaled menu and a compact ChatGPT result window below it.
 
 Content sections use 112px vertical spacing, reduced to 72px on mobile. Feature proofs
-use two unequal columns, installation steps use an ordered sequence, and FAQ uses plain
+use three equal columns in a 1280px feature container, installation steps use an ordered sequence, and FAQ uses plain
 full-width disclosure rows. Grid children allow shrinking at 320px.
+
+The approved feature section pairs a heading and short description with a 3:2
+landscape-backed native UI excerpt below. Order: account switching, remaining usage,
+reset credits. Account rows follow StatusMenuController.swift: a disabled current
+account with a checkmark, names, remaining usage and query age, plus a blue highlighted
+alternative. No avatars, profile footer, or repeated trial action. Forest, mountains,
+and lake images are decorative backdrops; all product text and icons remain HTML/SVG.
+At tablet sizes descriptions sit beside the excerpts; phones use one vertical column.
 
 ## Elevation & Depth
 
@@ -204,5 +212,5 @@ immediately. The hero and app demo retain their own interaction timing.
 
 ### Don't:
 - **Don't** use screenshot crops as the product UI.
-- **Don't** add decorative generated wallpaper behind the product.
+- **Don't** add wallpaper to the hero; landscape backdrops are confined to the user-approved feature previews.
 - **Don't** turn the existing app's small status accents into the page palette.

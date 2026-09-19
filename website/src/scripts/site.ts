@@ -217,7 +217,7 @@ openLinkedAnswer();
 // 처음 화면 밖에 있던 본문만 한 번 드러낸다. JS가 없으면 모든 내용은 그대로 보인다.
 if (!reducedMotion.matches && 'IntersectionObserver' in window) {
   const sections = document.querySelectorAll<HTMLElement>(
-    '.section-heading, .feature-story, .quiet-features, .setup-list li, .signed-note, .faq-heading, .faq-list, .closing',
+    '.section-heading, .feature-story, .setup-list li, .signed-note, .faq-heading, .faq-list, .closing',
   );
   const reveal = (element: Element) => {
     element.classList.remove('reveal-pending');

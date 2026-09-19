@@ -41,8 +41,8 @@ information. All controls support keyboard operation and reduced motion.
 
 ## Visitor path
 
-Native product in context; a working account-switch demonstration; focused usage
-and reset-credit explanations; concise installation and FAQ; a plain download
+Native product in context; a working account-switch demonstration; three static
+feature columns for account switching, usage and reset credits; concise installation and FAQ; a plain download
 close. Retain Korean/English, light/dark, release links, and product facts.
 
 ## Motion and finish
@@ -53,7 +53,9 @@ Feature pairs and installation steps stagger by 70ms, up to 140ms. Initially vis
 content, reduced motion, keyboard focus, printing, and no-JavaScript visits stay readable.
 App text uses system UI to match macOS, tabular numerals for usage.
 Site typography is neutral, sharp, with tracking no tighter than -0.04em.
-No generated imagery. The existing app icon remains the only raster asset.
+The approved feature mockup adds three photographic landscape backdrops. Product UI
+stays coded, with the actual account submenu structure replacing the mockup's avatars.
+The feature section contains no repeated trial CTA or secondary feature row.
 
 The first menu entrance takes 420ms; subsequent openings take 220ms and exits
 110ms. Repeated input resumes from the current frame. Account data changes use

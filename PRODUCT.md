@@ -36,7 +36,8 @@ tilted screenshot presentation, and overall design.
 User explicitly named https://codexbar.app/?lang=ko as the reference for a clean,
 realistic Mac display with native menu UI, and requested direct code rendering
 of CodexSwitch's actual UI instead of screenshots. Preserve the app name/icon.
-No generated artwork or screenshot-based product panels in the replacement.
+Product panels remain code-rendered. The later approved three-column feature
+mockup permits photographic landscape backdrops behind the native UI excerpts.
 
 ## Evidence on Hand
 

@@ -8,6 +8,7 @@ import ChatGPTPreview from './ChatGPTPreview.astro';
 import languageScript from '../scripts/language.js?raw';
 import UsageMeter from './UsageMeter.astro';
 import CreditList from './CreditList.astro';
+import AccountSwitchPreview from './AccountSwitchPreview.astro';
 import { copy, type Language } from '../data/copy';
 import { demoCopy } from '../data/demo';
 interface Props { lang: Language }
@@ -78,16 +79,17 @@ const home = `/${lang}/`;
           </div></div></div>
         </div>
       </section>
-      <!-- 핵심 수치를 재사용 가능한 네이티브 컴포넌트로 보여준다. -->
+      <!-- 선택한 3열 시안에 맞춰 설명 아래에 실제 앱의 메뉴 세부 영역을 배치한다. -->
       <section id="features" class="features shell section" aria-labelledby="features-title">
-        <div class="section-heading"><h2 id="features-title">{t.featureTitle}</h2><p>{t.featureIntro}</p></div>
-        <div class="feature-pair">
-          <article class="feature-story"><div class="feature-proof usage-proof"><div class="detail-surface"><UsageMeter lang={lang} /></div></div><h3>{t.features[0].title}</h3><p>{t.features[0].text}</p></article>
-          <article class="feature-story"><div class="feature-proof credit-proof"><div class="detail-surface"><CreditList lang={lang} /></div></div><h3>{t.features[1].title}</h3><p>{t.features[1].text}</p></article>
-        </div>
-        <div class="quiet-features">
-          <article><Icon name="lock" /><div><h3>{ko ? '내 계정은 내 Mac 안에.' : 'Your accounts stay on your Mac.'}</h3><p>{t.privacyText}</p><a class="text-link" href="#privacy-answer">{t.privacyLink}<Icon name="arrow" /></a></div></article>
-          <article><Icon name="refresh" /><div><h3>{ko ? '사용량 확인은 알아서.' : 'Always up to date.'}</h3><p>{t.refreshText}</p></div></article>
+        <div class="section-heading"><h2 id="features-title">{t.featureTitle}</h2></div>
+        <div class="feature-grid">
+          {t.features.map((feature, i) => <article class="feature-story">
+            <h3>{feature.title}</h3><p>{feature.text}</p>
+            <div class:list={['feature-proof', ['switch-proof', 'usage-proof', 'credit-proof'][i]]}>
+              <img class="feature-landscape" src={`/images/features/${['forest', 'mountains', 'lake'][i]}.webp`} alt="" width="1000" height="667" loading="lazy" decoding="async" />
+              {i === 0 ? <AccountSwitchPreview lang={lang} /> : <div class="detail-surface">{i === 1 ? <UsageMeter lang={lang} /> : <CreditList lang={lang} />}</div>}
+            </div>
+          </article>)}
         </div>
       </section>
       <!-- 설치 순서와 전환 뒤 CLI 재시작 조건을 함께 안내한다. -->

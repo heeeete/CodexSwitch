@@ -1,0 +1,18 @@
+---
+import Icon from './Icon.astro';
+import { demoAccounts, demoCopy } from '../data/demo';
+import type { Language } from '../data/copy';
+const { lang } = Astro.props as { lang: Language };
+const d = demoCopy[lang];
+---
+<!-- StatusMenuController의 하위 메뉴: 현재 계정 체크, 계정명, 사용량과 조회 시각. -->
+<div class="switch-detail" role="img" aria-label={lang === 'ko' ? '계정 변경 메뉴. 현재 계정은 demo@example.com, 선택할 계정은 work@example.com.' : 'Switch account menu. The current account is demo@example.com; work@example.com is highlighted.'}>
+  <div class="switch-detail-command"><Icon name="users" /><span>{d.switch}</span><Icon name="caret" /></div>
+  <div class="switch-detail-menu">
+    {demoAccounts.map((account, i) => <div class:list={['switch-detail-row', { 'is-current': i === 0, 'is-highlighted': i === 1 }]}>
+      <Icon name="check" />
+      <span>{account.email}</span>
+      <span class="switch-detail-usage">{lang === 'ko' ? `주간 ${account.remaining}% 남음 · 방금` : `Weekly ${account.remaining}% left · just now`}</span>
+    </div>)}
+  </div>
+</div>

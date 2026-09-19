@@ -214,30 +214,42 @@ button:focus-visible, a:focus-visible, summary:focus-visible, input:focus-visibl
 .account-submenu button small { font-size: 10px; color: var(--menu-muted); margin-left: auto; }
 .account-submenu button:hover, .account-submenu button:focus-visible { background: var(--switch); color: #fff; outline: none; }
 .account-submenu button:hover small, .account-submenu button:focus-visible small { color: #fff; }
-/* 본문은 실제 UI의 두 세부 영역과 짧은 설명으로 구성한다. */
+/* 본문은 계정 전환, 사용량, 쿠폰의 세 가지 실제 UI를 설명한다. */
 /* 화면 아래의 내용에만 준비 상태를 붙이며, 첫 진입 뒤에는 계속 표시한다. */
 .scroll-reveal { transition: opacity 600ms var(--ease-out), transform 600ms var(--ease-out); transition-delay: var(--reveal-delay, 0ms); }
 .scroll-reveal.reveal-pending { opacity: 0; transform: translateY(24px); }
 .scroll-reveal:focus-within { opacity: 1; transform: none; transition: none; }
 .feature-story:nth-child(2), .setup-list li:nth-child(2) { --reveal-delay: 70ms; }
-.setup-list li:nth-child(3) { --reveal-delay: 140ms; }
+.feature-story:nth-child(3), .setup-list li:nth-child(3) { --reveal-delay: 140ms; }
 .section-heading h2, .setup h2, .closing h2 { font-size: 38px; line-height: 1.28; font-weight: 600; letter-spacing: -.035em; white-space: pre-line; }
 .section-heading > p { color: var(--muted); font-size: 14px; line-height: 1.8; margin-top: 20px; }
-.feature-pair { display: grid; grid-template-columns: 1.12fr 1fr; gap: 48px; margin-top: 55px; }
-.feature-story { min-width: 0; }
-.feature-proof { display: flex; align-items: center; justify-content: center; height: 245px; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 24px; margin-bottom: 28px; }
-.detail-surface { width: 352px; max-width: 100%; }
-.detail-surface .usage-meter { padding: 23px 24px; }
-.detail-surface .credit-section { padding: 20px 24px; }
-.detail-surface .credit-row { min-height: 32px; }
-.feature-story h3, .quiet-features h3, .setup h3 { font-size: 18px; line-height: 1.4; font-weight: 600; letter-spacing: -.025em; }
-.feature-story > p { color: var(--muted); font-size: 14px; line-height: 1.85; max-width: 390px; margin-top: 9px; }
-.quiet-features { display: grid; grid-template-columns: 1.12fr 1fr; gap: 48px; margin-top: 64px; padding-top: 36px; border-top: 1px solid var(--line); }
-.quiet-features article { display: flex; gap: 16px; }
-.quiet-features article > .icon { width: 19px; height: 23px; color: var(--muted); }
-.quiet-features h3 { font-size: 15px; line-height: 23px; }
-.quiet-features p { margin-top: 9px; color: var(--muted); font-size: 13px; line-height: 1.85; max-width: 380px; }
-.quiet-features .text-link { margin-top: 13px; font-size: 11px; }
+.features.shell { width: min(1280px, calc(100% - 96px)); }
+.features .section-heading h2 { font-size: clamp(36px, 4vw, 56px); }
+.feature-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 28px; margin-top: 60px; }
+.feature-story { min-width: 0; display: flex; flex-direction: column; }
+.feature-story h3, .setup h3 { font-size: 20px; line-height: 1.4; font-weight: 600; letter-spacing: -.025em; }
+.feature-story > p { color: var(--muted); font-size: 15px; line-height: 1.7; margin-top: 12px; padding-bottom: 24px; }
+/* 풍경만 래스터로 두고, 모든 제품 텍스트와 아이콘은 원래 컴포넌트로 렌더링한다. */
+.feature-proof { position: relative; isolation: isolate; display: flex; align-items: center; justify-content: center; aspect-ratio: 3 / 2; overflow: hidden; border-radius: 12px; padding: 20px; margin-top: auto; background: var(--surface); }
+.feature-landscape { position: absolute; inset: 0; z-index: -1; width: 100%; height: 100%; object-fit: cover; }
+.detail-surface { width: 340px; max-width: 100%; }
+.feature-proof .detail-surface, .switch-detail-command, .switch-detail-menu { background: color-mix(in srgb, var(--menu) 94%, transparent); backdrop-filter: blur(16px); }
+.detail-surface .usage-meter, .detail-surface .credit-section { padding: 18px; }
+.detail-surface .meter-numbers { gap: 14px; }
+.detail-surface .meter-reset { padding-left: 14px; }
+.detail-surface .meter-foot { flex-wrap: wrap; gap: 2px 8px; }
+/* NSMenu의 현재 계정은 비활성 체크, 가리킨 다른 계정은 파란 행으로 표시된다. */
+.switch-detail { width: 100%; font-family: var(--font); color: var(--menu-text); }
+.switch-detail-command { display: flex; align-items: center; gap: 8px; width: 155px; padding: 8px 10px; margin: 0 0 4px 6px; border-radius: 7px; font-size: 12px; box-shadow: 0 3px 12px #0003; }
+.switch-detail-command .icon { width: 15px; height: 15px; }
+.switch-detail-command .icon:last-child { width: 10px; margin-left: auto; }
+.switch-detail-menu { padding: 5px; border-radius: 7px; box-shadow: 0 12px 28px #0005; }
+.switch-detail-row { display: flex; align-items: center; gap: 5px; min-height: 29px; padding: 6px 5px; border-radius: 4px; font-size: 10px; white-space: nowrap; }
+.switch-detail-row > .icon { width: 10px; height: 10px; visibility: hidden; }
+.switch-detail-row.is-current { color: var(--menu-muted); }
+.switch-detail-row.is-current > .icon { visibility: visible; }
+.switch-detail-row.is-highlighted { background: var(--switch); color: #fff; }
+.switch-detail-usage { margin-left: auto; font-variant-numeric: tabular-nums; }
 .setup { background: var(--surface); border-block: 1px solid var(--line); }
 .setup-list { list-style: none; display: grid; grid-template-columns: repeat(3, 1fr); gap: 48px; margin: 56px 0 0; padding: 0; }
 .step-symbol { display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; margin-bottom: 24px; border: 1px solid var(--line); border-radius: 10px; }
@@ -282,6 +294,11 @@ button:focus-visible, a:focus-visible, summary:focus-visible, input:focus-visibl
 }
 @media (max-width: 1100px) {
   .shell { width: calc(100% - 80px); }
+  .features.shell { width: calc(100% - 80px); }
+  .feature-grid { grid-template-columns: 1fr; gap: 36px; }
+  .feature-story { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); grid-template-rows: auto 1fr; column-gap: 32px; }
+  .feature-story > p { padding-bottom: 0; }
+  .feature-proof { grid-column: 2; grid-row: 1 / 3; margin-top: 0; }
   .hero-layout { grid-template-columns: 53vw minmax(0, 1fr); column-gap: 5vw; padding-right: 4%; }
   .desktop-content { padding-right: 28px; }
   .hero h1 { font-size: clamp(30px, 3.35vw, 40px); }
@@ -301,9 +318,6 @@ button:focus-visible, a:focus-visible, summary:focus-visible, input:focus-visibl
   .hero-app-icon { width: 34px; height: 34px; }
   .hero-description { font-size: 13px; }
   .header-github { display: none; }
-  .feature-pair, .quiet-features { gap: 28px; }
-  .feature-proof { padding: 18px; height: 220px; }
-  .detail-surface .usage-meter, .detail-surface .credit-section { padding-inline: 16px; }
   .faq { grid-template-columns: 1fr 1.6fr; gap: 36px; }
   .setup-list { gap: 28px; }
 }
@@ -360,13 +374,9 @@ button:focus-visible, a:focus-visible, summary:focus-visible, input:focus-visibl
   .section { padding-block: 72px; }
   .section-heading h2 { font-size: 30px; }
   .section-heading > p { font-size: 13px; margin-top: 16px; max-width: 300px; }
-  .feature-pair { grid-template-columns: minmax(0, 1fr); gap: 38px; margin-top: 32px; }
-  .feature-proof { height: 228px; margin-bottom: 20px; }
-  .feature-story h3 { font-size: 17px; }
-  .feature-story > p { font-size: 13px; }
-  .quiet-features { grid-template-columns: 1fr; gap: 29px; margin-top: 37px; padding-top: 30px; }
-  .quiet-features h3 { font-size: 15px; }
-  .quiet-features p { font-size: 12px; }
+  .features.shell { width: calc(100% - 40px); }
+  .features .section-heading h2 { font-size: 32px; }
+  .feature-grid { margin-top: 36px; }
   .setup-list { grid-template-columns: 1fr; gap: 28px; margin-top: 35px; }
   .setup-list li { display: grid; grid-template-columns: 40px 1fr; gap: 7px 17px; }
   .step-symbol { grid-row: span 2; margin: 0; }
@@ -387,6 +397,16 @@ button:focus-visible, a:focus-visible, summary:focus-visible, input:focus-visibl
   .footer-links { gap: 16px; font-size: 10px; }
   .legal { font-size: 9px; }
 }
+/* 휴대폰에서는 설명 다음에 이미지를 이어 붙여 자연스러운 한 열로 읽는다. */
+@media (max-width: 640px) {
+  .feature-grid { gap: 40px; }
+  .feature-story { display: flex; }
+  .feature-story h3 { font-size: 20px; }
+  .feature-story > p { font-size: 14px; margin-top: 10px; padding-bottom: 20px; }
+  .feature-proof { width: 100%; min-height: 220px; padding: 16px; }
+  .switch-detail { max-width: 370px; }
+  .switch-detail-row { font-size: 10px; }
+}
 @media (max-width: 370px) {
   .hero h1 { font-size: 26px; }
   .hero-actions { gap: 16px; }
@@ -402,6 +422,8 @@ button:focus-visible, a:focus-visible, summary:focus-visible, input:focus-visibl
   .detail-surface .meter-reset { padding-left: 12px; }
   .detail-surface .meter-reset > strong { font-size: 14px; }
   .detail-surface .meter-foot { flex-wrap: wrap; gap: 2px 8px; }
+  .switch-proof { padding-inline: 8px; }
+  .switch-detail-row { font-size: 9px; gap: 4px; padding-inline: 4px; }
   .preference-row { font-size: 11px; }
   .footer-links { margin-left: 0; }
 }
