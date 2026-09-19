@@ -182,14 +182,23 @@ color transition preserves feedback about the new state.
 
 ### Navigation and FAQ
 
-Header navigation is understated; mobile retains branding, theme, language, and the hero
-CTA. FAQ uses native details/summary so it remains functional without client JavaScript.
+The header keeps branding, theme, language, GitHub, and download controls; section
+navigation is omitted. Mobile keeps its existing compact controls. FAQ uses native
+details/summary so it remains functional without client JavaScript.
+
+### Scroll entrances
+
+At the user's request, below-the-fold content fades in while rising 24px over 600ms,
+using the existing ease-out curve. Feature pairs and installation steps stagger by
+70ms, capped at 140ms. Each group reveals once. Initially visible content stays visible;
+keyboard focus, reduced motion, printing, and pages without JavaScript expose content
+immediately. The hero and app demo retain their own interaction timing.
 
 ## Do's and Don'ts
 
 ### Do:
 - **Do** use actual product structure and native proportions for app demonstrations.
-- **Do** keep all marketing content visible without entrance animations.
+- **Do** keep all marketing content visible without JavaScript and under reduced motion.
 - **Do** use example.com accounts for the demo and keep feedback about changed state brief.
 - **Don't** add disclaimers explaining that the demo does not affect real accounts; the user explicitly rejected that redundant copy.
 

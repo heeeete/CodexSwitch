@@ -47,8 +47,11 @@ close. Retain Korean/English, light/dark, release links, and product facts.
 
 ## Motion and finish
 
-Menu and submenu disclosure are the authored motion. Content is visible by
-default. App text uses system UI to match macOS, tabular numerals for usage.
+Menu and submenu disclosure keep their authored motion. At the user's request,
+below-the-fold content now reveals once on scroll with a 24px rise and 600ms fade.
+Feature pairs and installation steps stagger by 70ms, up to 140ms. Initially visible
+content, reduced motion, keyboard focus, printing, and no-JavaScript visits stay readable.
+App text uses system UI to match macOS, tabular numerals for usage.
 Site typography is neutral, sharp, with tracking no tighter than -0.04em.
 No generated imagery. The existing app icon remains the only raster asset.
 
@@ -59,7 +62,7 @@ transition without reflow. The menu slot keeps its height when closed. Reduced
 motion uses an 80ms opacity-only alternative and immediate usage-bar changes.
 ChatGPT exits in 160ms, pauses 150ms, and enters over 420ms. Rapid selection cancels
 the previous transition; only the newest account completes. Reduced motion removes
-the scale and pause, retaining 80ms fades. No infinite effects or scroll reveals.
+the scale and pause, retaining 80ms fades. No infinite effects.
 
 ## Language
 

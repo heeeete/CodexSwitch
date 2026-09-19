@@ -41,7 +41,6 @@ const home = `/${lang}/`;
     <a class="skip-link" href="#main">{t.skip}</a>
     <header class="site-header shell">
       <a class="brand" href={home}><AppMark monochrome /><span>CodexSwitch</span></a>
-      <nav class="main-nav" aria-label={ko ? '주요 메뉴' : 'Main navigation'}><a href="#features">{t.nav[0]}</a><a href="#setup">{t.nav[1]}</a><a href="#faq">FAQ</a></nav>
       <div class="header-actions">
         <button class="icon-button theme-toggle" type="button" aria-label={t.themeLight} data-dark-label={t.theme} data-light-label={t.themeLight}><Icon name="sun" class="sun-icon" /><Icon name="moon" class="moon-icon" /></button>
         <a class="language-link" href={ko ? '/en/' : '/ko/'} lang={ko ? 'en' : 'ko'} hreflang={ko ? 'en' : 'ko'} aria-label={t.language}>{ko ? 'EN' : 'KO'}</a>

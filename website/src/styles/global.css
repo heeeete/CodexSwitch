@@ -53,9 +53,8 @@ button:focus-visible, a:focus-visible, summary:focus-visible, input:focus-visibl
 .app-mark.mark-monochrome { width: 26px; height: 22px; color: currentColor; background: none; box-shadow: none; border-radius: 0; }
 .brand { display: inline-flex; align-items: center; gap: 10px; font-size: 16px; font-weight: 650; letter-spacing: -.025em; white-space: nowrap; }
 .site-header { width: min(1600px, 88%); height: 88px; display: flex; align-items: center; gap: 40px; }
-.main-nav { display: flex; align-items: center; gap: 28px; margin-left: auto; color: var(--muted); font-size: 12px; }
-.main-nav a:hover, .footer-links a:hover { color: var(--text); }
-.header-actions { display: flex; align-items: center; gap: 16px; }
+.footer-links a:hover { color: var(--text); }
+.header-actions { display: flex; align-items: center; gap: 16px; margin-left: auto; }
 .icon-button { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; background: none; color: var(--muted); border-radius: 6px; }
 .icon-button:hover { color: var(--text); background: var(--surface); }
 .icon-button .icon { width: 18px; height: 18px; }
@@ -216,6 +215,12 @@ button:focus-visible, a:focus-visible, summary:focus-visible, input:focus-visibl
 .account-submenu button:hover, .account-submenu button:focus-visible { background: var(--switch); color: #fff; outline: none; }
 .account-submenu button:hover small, .account-submenu button:focus-visible small { color: #fff; }
 /* 본문은 실제 UI의 두 세부 영역과 짧은 설명으로 구성한다. */
+/* 화면 아래의 내용에만 준비 상태를 붙이며, 첫 진입 뒤에는 계속 표시한다. */
+.scroll-reveal { transition: opacity 600ms var(--ease-out), transform 600ms var(--ease-out); transition-delay: var(--reveal-delay, 0ms); }
+.scroll-reveal.reveal-pending { opacity: 0; transform: translateY(24px); }
+.scroll-reveal:focus-within { opacity: 1; transform: none; transition: none; }
+.feature-story:nth-child(2), .setup-list li:nth-child(2) { --reveal-delay: 70ms; }
+.setup-list li:nth-child(3) { --reveal-delay: 140ms; }
 .section-heading h2, .setup h2, .closing h2 { font-size: 38px; line-height: 1.28; font-weight: 600; letter-spacing: -.035em; white-space: pre-line; }
 .section-heading > p { color: var(--muted); font-size: 14px; line-height: 1.8; margin-top: 20px; }
 .feature-pair { display: grid; grid-template-columns: 1.12fr 1fr; gap: 48px; margin-top: 55px; }
@@ -284,7 +289,6 @@ button:focus-visible, a:focus-visible, summary:focus-visible, input:focus-visibl
   .hero-product { font-size: 14px; gap: 12px; margin-bottom: 32px; }
   .hero-description { font-size: 14px; }
   .hero-actions { gap: 17px; }
-  .main-nav { gap: 20px; }
   .site-header { gap: 24px; }
   .header-actions { gap: 12px; }
 }
@@ -296,9 +300,7 @@ button:focus-visible, a:focus-visible, summary:focus-visible, input:focus-visibl
   .hero-product { font-size: 12px; gap: 9px; }
   .hero-app-icon { width: 34px; height: 34px; }
   .hero-description { font-size: 13px; }
-  .main-nav { gap: 16px; }
   .header-github { display: none; }
-  .header-actions { margin-left: auto; }
   .feature-pair, .quiet-features { gap: 28px; }
   .feature-proof { padding: 18px; height: 220px; }
   .detail-surface .usage-meter, .detail-surface .credit-section { padding-inline: 16px; }
@@ -316,7 +318,7 @@ button:focus-visible, a:focus-visible, summary:focus-visible, input:focus-visibl
   .site-header { height: 68px; gap: 12px; }
   .brand { font-size: 14px; gap: 8px; }
   .brand .app-mark { width: 23px; height: 20px; }
-  .main-nav, .site-header .button-small { display: none; }
+  .site-header .button-small { display: none; }
   .header-actions { gap: 15px; }
   .hero-layout { --crop-offset: 160px; --demo-scale: 1; display: flex; flex-direction: column; gap: 36px; padding: 0; margin-top: 32px; }
   .hero-copy { width: calc(100% - 48px); margin-inline: auto; padding: 0; }
@@ -404,6 +406,9 @@ button:focus-visible, a:focus-visible, summary:focus-visible, input:focus-visibl
   .footer-links { margin-left: 0; }
 }
 @keyframes refresh { to { transform: rotate(360deg); } }
+@media print, (prefers-reduced-motion: reduce) {
+  .scroll-reveal, .scroll-reveal.reveal-pending { opacity: 1; transform: none; transition: none; }
+}
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
   .button:hover .icon:last-child, .button:focus-visible .icon:last-child, .text-link:hover .icon { transform: none; }

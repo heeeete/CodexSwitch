@@ -213,3 +213,31 @@ document.querySelectorAll<HTMLDetailsElement>('.faq-list details').forEach((deta
 const openLinkedAnswer = () => { if (location.hash === '#privacy-answer') document.querySelector<HTMLDetailsElement>('#privacy-answer')!.open = true; };
 window.addEventListener('hashchange', openLinkedAnswer);
 openLinkedAnswer();
+
+// 처음 화면 밖에 있던 본문만 한 번 드러낸다. JS가 없으면 모든 내용은 그대로 보인다.
+if (!reducedMotion.matches && 'IntersectionObserver' in window) {
+  const sections = document.querySelectorAll<HTMLElement>(
+    '.section-heading, .feature-story, .quiet-features, .setup-list li, .signed-note, .faq-heading, .faq-list, .closing',
+  );
+  const reveal = (element: Element) => {
+    element.classList.remove('reveal-pending');
+    observer.unobserve(element);
+  };
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach((entry) => { if (entry.isIntersecting) reveal(entry.target); });
+  }, { rootMargin: '0px 0px -32px 0px' });
+  sections.forEach((element) => {
+    if (element.getBoundingClientRect().top < window.innerHeight) return;
+    observer.observe(element);
+    element.classList.add('scroll-reveal', 'reveal-pending');
+  });
+
+  // 키보드로 도착한 내용과 동작 줄이기 설정은 대기 없이 표시한다.
+  document.addEventListener('focusin', (event) => {
+    const section = (event.target as HTMLElement).closest('.reveal-pending');
+    if (section) reveal(section);
+  });
+  reducedMotion.addEventListener('change', () => {
+    if (reducedMotion.matches) { sections.forEach(reveal); observer.disconnect(); }
+  });
+}
