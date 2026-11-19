@@ -4,6 +4,30 @@ import XCTest
 
 @MainActor
 final class StatusMenuControllerTests: LocalizedTestCase {
+    // 서비스 아이콘은 설치된 앱의 메뉴바 아이콘을 18pt template으로 쓰고, 찾지 못하면 CodexSwitch 로고로 대신한다.
+    func testServiceMenuBarIconComesFromInstalledAppWithLogoFallback() throws {
+        let app = FileManager.default.temporaryDirectory.appendingPathComponent("FakeClaude-\(UUID().uuidString).app")
+        defer { try? FileManager.default.removeItem(at: app) }
+        let resources = app.appendingPathComponent("Contents/Resources", isDirectory: true)
+        try FileManager.default.createDirectory(at: resources, withIntermediateDirectories: true)
+        try PropertyListSerialization.data(fromPropertyList: ["CFBundleIdentifier": "test.fake.claude"], format: .xml, options: 0)
+            .write(to: app.appendingPathComponent("Contents/Info.plist"))
+        let bitmap = try XCTUnwrap(NSBitmapImageRep(
+            bitmapDataPlanes: nil, pixelsWide: 24, pixelsHigh: 24, bitsPerSample: 8, samplesPerPixel: 4,
+            hasAlpha: true, isPlanar: false, colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0
+        ))
+        try XCTUnwrap(bitmap.representation(using: .png, properties: [:]))
+            .write(to: resources.appendingPathComponent("TrayIconTemplate.png"))
+
+        let claude = CodexSwitchIcon.serviceMenuBarImage(.claude, appURL: app)
+        XCTAssertTrue(claude.isTemplate)
+        XCTAssertEqual(claude.size, NSSize(width: 18, height: 18))
+        XCTAssertEqual(claude.accessibilityDescription, "Claude")
+        // 앱이 없거나 그 서비스의 아이콘 파일이 없으면 로고로 대신한다.
+        XCTAssertTrue(CodexSwitchIcon.serviceMenuBarImage(.codex, appURL: nil) === CodexSwitchIcon.menuBarImage)
+        XCTAssertTrue(CodexSwitchIcon.serviceMenuBarImage(.codex, appURL: app) === CodexSwitchIcon.menuBarImage)
+    }
+
     // 메뉴를 닫아둔 상태에서도 계정 변경·새 데이터가 메뉴바와 기본 하위 메뉴에 반영된다.
     func testUsageDisplayFollowsAccountAndDataChanges() async throws {
         _ = NSApplication.shared

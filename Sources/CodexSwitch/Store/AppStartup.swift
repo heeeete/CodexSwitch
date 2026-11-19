@@ -6,17 +6,17 @@ import SwiftUI
 final class AppStartup: NSObject, ObservableObject, NSApplicationDelegate, NSWindowDelegate {
     @Published private(set) var installationError: String?
     @Published private(set) var isInstalling = false
-    lazy var accountStore = AccountStore()
+    lazy var accounts = ProviderAccounts()
     lazy var updateStore = UpdateStore(
         startAutomatically: true,
-        prepareForRestart: { [weak self] in self?.accountStore.prepareForUpdateRestart() ?? false },
-        restartCancelled: { [weak self] in self?.accountStore.cancelUpdateRestart() }
+        prepareForRestart: { [weak self] in self?.accounts.prepareForUpdateRestart() ?? false },
+        restartCancelled: { [weak self] in self?.accounts.cancelUpdateRestart() }
     )
     private var installationWindow: NSWindow?
     private var statusMenu: StatusMenuController?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        #if DEBUG
+        #if DEBUG || CODEXSWITCH_LOCAL_TEST
         // 개발 실행본은 설치하지 않아 로컬 빌드가 사용 중인 앱을 교체하지 않는다.
         startRuntime()
         #else
@@ -68,13 +68,13 @@ final class AppStartup: NSObject, ObservableObject, NSApplicationDelegate, NSWin
     }
 
     private func startRuntime() {
-        #if !DEBUG
+        #if !DEBUG && !CODEXSWITCH_LOCAL_TEST
         // 설치가 끝난 배포 앱만 등록하고 개발·테스트 실행본은 로그인 항목에 넣지 않는다.
         LoginItemSettings.shared.enableByDefault()
         #endif
-        _ = accountStore
+        _ = accounts
         _ = updateStore
-        statusMenu = StatusMenuController(store: accountStore, updateStore: updateStore)
+        statusMenu = StatusMenuController(accounts: accounts, updateStore: updateStore)
     }
 
     func applicationWillTerminate(_ notification: Notification) {

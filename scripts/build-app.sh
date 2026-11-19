@@ -48,9 +48,13 @@ fi
     shasum -a 256 -c "$UPSTREAM_MANIFEST"
 )
 
-# 같은 아키텍처의 release 실행 파일을 만들고 이전 앱 번들은 깨끗이 교체한다.
-swift build -c release --arch "$TARGET_ARCH" --package-path "$PROJECT_ROOT"
-BUILD_PRODUCTS="$(swift build -c release --arch "$TARGET_ARCH" --package-path "$PROJECT_ROOT" --show-bin-path)"
+# 로컬 서명 빌드만 자동 설치를 건너뛰며 인증 서비스의 DEBUG 동작은 켜지 않는다.
+SWIFT_BUILD_ARGUMENTS=(-c release --arch "$TARGET_ARCH" --package-path "$PROJECT_ROOT")
+if [[ "$SIGNING_IDENTITY" == "-" ]]; then
+    SWIFT_BUILD_ARGUMENTS+=(-Xswiftc -DCODEXSWITCH_LOCAL_TEST)
+fi
+swift build "${SWIFT_BUILD_ARGUMENTS[@]}"
+BUILD_PRODUCTS="$(swift build "${SWIFT_BUILD_ARGUMENTS[@]}" --show-bin-path)"
 rm -rf "$APP_BUNDLE" "$ICONSET_PATH"
 mkdir -p "$APP_MACOS" "$APP_HELPERS" "$APP_RESOURCES" "$APP_FRAMEWORKS"
 

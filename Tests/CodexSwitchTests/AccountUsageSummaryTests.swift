@@ -35,6 +35,22 @@ final class AccountUsageSummaryTests: LocalizedTestCase {
         XCTAssertEqual(missing.menuText, "사용량 정보 없음")
     }
 
+    // 모델별 주간 한도는 계정 목록 문구에만 이름과 함께 붙이고 메뉴 막대 문구는 그대로 둔다.
+    func testModelWeeklyLimitAppearsOnlyInMenuText() {
+        var account = makeAccount(primary: window(minutes: 300, used: 26),
+                                  secondary: window(minutes: 10_080, used: 6), age: 20)
+        account.lastUsage?.scoped = [
+            UsageWindow(usedPercent: 11, windowMinutes: 10_080, resetsAt: 2_001_000_000, scope: "Fable"),
+            UsageWindow(usedPercent: 50, windowMinutes: 10_080, resetsAt: 1_999_999_999, scope: "Opus")
+        ]
+        let summary = AccountUsageSummary(account: account, now: now)
+        XCTAssertEqual(summary.menuBarText, "5h 74% · 주간 94%")
+        XCTAssertEqual(summary.menuText, "5h 74% 남음 · 주간 94% 남음 · Fable 89% 남음 · Opus 재조회 필요 · 방금")
+        let meter = UsageMeter(window: UsageWindow(usedPercent: 11, windowMinutes: 10_080, resetsAt: 2_000_345_600, scope: "Fable"), now: now)
+        XCTAssertEqual(meter?.displayTitle, "Fable 주간 잔여량")
+        XCTAssertEqual(meter?.dailyAllowance(at: now), 22)
+    }
+
     func testMissingTimestampIsNotShownAsFresh() {
         var account = makeAccount(primary: window(minutes: 10_080, used: 19))
         account.lastUsageAt = nil

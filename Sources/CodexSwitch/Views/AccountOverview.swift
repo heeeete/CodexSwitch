@@ -8,6 +8,7 @@ struct AccountOverview: View {
     let removingAccountKey: String?
     let isDisabled: Bool
     var resetCreditState: ResetCreditState = .loading
+    var showsResetCredits = true
 
     var body: some View {
         if let currentAccount {
@@ -27,11 +28,14 @@ struct AccountOverview: View {
                 .padding(.top, 12)
                 .padding(.bottom, 14)
 
-                Divider().padding(.horizontal, 16)
+                // 쿠폰 조회가 있는 서비스에서만 해당 영역과 구분선을 표시한다.
+                if showsResetCredits {
+                    Divider().padding(.horizontal, 16)
 
-                ResetCreditSection(state: resetCreditState)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 12)
+                    ResetCreditSection(state: resetCreditState)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 12)
+                }
             }
         }
     }
@@ -226,17 +230,46 @@ private struct ActiveAccountDetail: View {
 
     var body: some View {
         TimelineView(.periodic(from: .now, by: 60)) { context in
-            let meters = [item.account.lastUsage?.primary, item.account.lastUsage?.secondary]
+            let base = [item.account.lastUsage?.primary, item.account.lastUsage?.secondary]
                 .compactMap { $0 }.compactMap { UsageMeter(window: $0, now: context.date) }
                 .sorted { $0.windowMinutes < $1.windowMinutes }
+            // 모델별 주간 한도는 전체 한도 아래에 이어서 보여 준다.
+            let meters = base + (item.account.lastUsage?.scoped ?? []).compactMap { UsageMeter(window: $0, now: context.date) }
+            let isClaude = item.account.authMode == "claude"
             VStack(spacing: 14) {
                 if meters.isEmpty {
-                    Text(L10n.text("사용량 정보 없음"))
-                        .font(.system(size: 12, weight: .medium)).foregroundStyle(.secondary)
-                        .frame(maxWidth: .infinity, minHeight: 50, alignment: .leading)
+                    // 값이 없는 이유와 다음 행동을 원인별로 보여 주고, 공식 화면에서 확인할 곳을 함께 안내한다.
+                    VStack(alignment: .leading, spacing: 6) {
+                        if item.account.usageIssues.isEmpty {
+                            Text(L10n.text("사용량 정보 없음"))
+                        } else {
+                            ForEach(Array(item.account.usageIssues.enumerated()), id: \.offset) { _, issue in
+                                Text(issue.localizedDescription).fixedSize(horizontal: false, vertical: true)
+                            }
+                        }
+                        if isClaude, item.account.usageIssues.first as? ClaudeUsageError != .notSubscribed {
+                            Text(L10n.text("현재 값은 Claude의 설정 → 사용량에서 확인할 수 있습니다."))
+                                .font(.system(size: 11)).fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+                    .font(.system(size: 12, weight: .medium)).foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, minHeight: 50, alignment: .leading)
                 } else {
                     ForEach(meters) { meter in
                         DetailedUsageMeterRow(meter: meter, date: context.date, isCompact: meters.count > 1)
+                    }
+                    // Claude가 한 기간만 제공하면 빠진 기간을 0%로 오해하지 않게 따로 알린다.
+                    if isClaude, base.count == 1, let missing = [300, 10_080].first(where: { $0 != base[0].windowMinutes }),
+                       let placeholder = UsageMeter(window: UsageWindow(usedPercent: 0, windowMinutes: missing, resetsAt: nil)) {
+                        Text(L10n.text("%@ 기록 없음", placeholder.displayTitle))
+                            .font(.system(size: 11)).foregroundStyle(.secondary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    // 데스크톱 기록에는 초기화 시각이 없어, 사용 중인 기간의 남은 시간은 실시간 조회로만 알 수 있다.
+                    if isClaude, meters.contains(where: { $0.resetsAt == nil && $0.remainingPercent < 100 }) {
+                        Text(L10n.text("초기화까지 남은 시간은 새로고침하면 표시됩니다."))
+                            .font(.system(size: 11)).foregroundStyle(.secondary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
                     }
                 }
             }

@@ -27,7 +27,8 @@ open dist/local-test/CodexSwitch.app
 `build-app.sh`는 현재 Mac 아키텍처에 맞는 Swift 실행 파일과 `codex-auth` helper,
 앱 아이콘, 오픈소스 고지를 표준 macOS 앱 번들로 조립합니다. 기본 빌드는 로컬
 테스트용 ad-hoc 서명을 사용하며, Team ID가 없는 이 빌드에는 Hardened Runtime을
-적용하지 않습니다. 로컬 확인용 최신 앱은 `dist/local-test/CodexSwitch.app` 하나만
+적용하지 않습니다. 로컬 빌드는 배포용 최적화를 유지하면서 자동 설치와 로그인 항목
+등록을 건너뛰고 바로 메뉴바에서 실행됩니다. 로컬 확인용 최신 앱은 `dist/local-test/CodexSwitch.app` 하나만
 유지하며 다음 빌드가 같은 경로를 교체합니다. 자동 설치까지 확인할 때는
 `CODE_SIGN_IDENTITY`에 Developer ID Application 인증서를 지정합니다.
 
@@ -98,6 +99,11 @@ CI는 Apple Silicon용 앱을 ad-hoc 서명으로 조립한 뒤 Swift 테스트,
 | `.github/workflows/ci.yml` | PR·main의 테스트와 개발용 앱 생성 |
 | `.github/workflows/release.yml` | Developer ID 서명·공증과 GitHub Release 게시 |
 
+메뉴바에는 선택한 탭의 현재 계정 사용량을 그 서비스 아이콘과 함께 표시합니다. 아이콘은 앱에 포함하지
+않고 설치된 서비스 앱(`com.openai.codex`의 `chatgptTemplate`, `com.anthropic.claudefordesktop`의
+`TrayIconTemplate`)에서 실행 중 한 번 읽습니다. 앱이 없거나 파일 이름이 바뀌면 CodexSwitch 로고를 쓰고,
+현재 계정이 없으면 숫자 없이 로고만 표시합니다.
+
 ## 계정 데이터와 전환
 
 - UI는 `~/.codex/accounts/registry.json`의 계정 메타데이터와 일반 Codex의 로컬 사용량 기록을 읽어 표시합니다.
@@ -116,6 +122,69 @@ CI는 Apple Silicon용 앱을 ad-hoc 서명으로 조립한 뒤 Swift 테스트,
 비활성 계정은 실행 중인 ChatGPT를 건드리지 않고 제거합니다. 활성 계정을
 제거하면 남은 계정 중 하나로 전환하고, 마지막 계정을 제거하면 이 Mac의 Codex
 인증만 해제합니다.
+
+## Claude 데스크톱
+
+`ProviderAccounts`가 서비스별 `AccountStore`와 마지막 선택 탭을 관리합니다. 인증 동작은
+`AccountService`로 분리하고 기존 Codex 인증 경로는 유지합니다. 앱 업데이트와 종료는
+두 서비스의 계정 작업이 끝난 뒤에만 실행합니다. 탭 전환과 계정 메뉴는 인증을 바꾸는 작업
+(`isAccountOperationBusy`) 중에만 막고, 새로 고침 중에 요청한 계정 작업은 그 조회가 끝난 뒤
+이어서 실행합니다. 자동 조회는 다른 작업의 안내를 지우지 않고 자신이 띄운 오류만 다음 성공 때 지웁니다.
+Claude를 종료할 때는 쿠키 DB를 쥔 보조 프로세스까지 끝나길 기다리고, Codex는 본 앱 종료만 확인합니다.
+
+`ClaudeAuthService`는 `~/Library/Application Support/Claude/config.json`의 인증 캐시와
+계정 UUID, 같은 프로필의 쿠키 파일을 함께 저장·복원합니다. 스냅샷과 메타데이터는
+`~/Library/Application Support/CodexSwitch/Claude`에 보관하며 파일 권한은 `0600`입니다.
+정상 종료가 확인된 뒤에만 쿠키를 복사하고, 전환 전 복구 기록을 먼저 작성합니다.
+실패하거나 이전 작업이 중단되었으면 복구 기록으로 인증과 계정 목록을 되돌립니다.
+
+`ClaudeUsageClient`는 기존 macOS 키체인으로 인증 캐시를 메모리에서 복호화한 뒤
+Anthropic의 OAuth 프로필·사용량 주소를 조회합니다. 응답의 계정 UUID를 검증하고
+5시간·주간 창을 공통 사용량 모델에 매핑합니다. 요청은 임시 세션을 사용하며 리다이렉트를
+거부합니다. 자동 조회에서는 키체인 상호작용을 금지하고, 조회 실패나 요청 제한 시에는
+이전 사용량과 조회 시각을 유지합니다. 액세스 토큰 갱신은 Claude 데스크톱이 담당합니다.
+Code OAuth가 아직 없는 일반 데스크톱 로그인은 `ClaudeWebClient`가 읽기 전용 쿠키 DB의
+세션으로 확인합니다. Chromium 24 이상 쿠키의 도메인 해시와 서버 계정 UUID를 검증한 뒤
+`claude.ai`의 계정·조직·사용량 주소를 조회합니다.
+
+사용량의 기본 출처는 Claude 데스크톱이 남기는 `plan-usage-history.json`입니다.
+`ClaudeDesktopUsage`가 버전 2 형식의 표본(`org`, `t`, `u.fh`, `u.sd`)을 읽으며 키체인과
+네트워크를 쓰지 않습니다. 표본에는 조직만 있으므로 `~/Library/Logs/Claude/main.log`의 계정
+로드 기록으로 표본 직전에 열린 계정을 확인하고, 그 시점의 로그가 없으면 `claude-code-sessions`
+폴더와 로그를 합쳐 한 계정만 쓰는 조직일 때만 귀속합니다. 여러 계정이 함께 쓰는 조직은 추측하지
+않습니다. 쿠키 세션으로 실시간 조회할 때는 같은 로그에서 계정이 마지막으로 연 조직을 먼저 고르고,
+서버의 조직 목록에 없으면 채팅 조직을 사용합니다.
+두 기간은 따로 변환해 미제공 값과 실제 0%를 구분하고, 표본에 없는 초기화 시각은 만들지 않습니다.
+이전 온라인 조회가 알려 준 초기화 시각은 그 기간이 끝나기 전의 표본에만 이어 씁니다.
+초기화 시각 없이 기록된 값은 기간 길이(5시간·7일)를 넘기면 표시하지 않습니다.
+
+특정 모델에만 걸린 주간 한도는 사용량 응답의 `limits` 목록에서 `group`이 `weekly`이고
+`scope.model.display_name`이 있는 항목(`percent`, `resets_at`)으로 읽어 `UsageSnapshot.scoped`에
+둡니다. 데스크톱 기록에는 이 값이 없으므로, 더 새로운 표본을 반영할 때는 초기화 시각이 표본보다
+뒤인 값만 이어 쓰고 그 뒤에는 다음 실시간 조회까지 표시하지 않습니다. 메뉴 막대 문구에는 넣지 않고
+현재 계정 영역과 계정 목록 문구에만 표시합니다.
+
+Claude 탭을 처음 열 때는 데스크톱 기록만 반영해 목록을 바로 표시하고, 이어서 승인창 없는
+실시간 조회를 한 번 실행합니다. 계정별 실시간 조회는 동시에 보내고 결과는 저장된 계정 순서로
+반영합니다. 동시 조회는 `TaskGroup` 대신 계정별 `Task`로 실행합니다. Swift 6.4.2의 릴리스
+최적화에서 `TaskGroup`이 자식 결과를 돌려주지 않아 배포 빌드에서만 조회 결과가 버려졌기 때문이며,
+같은 종류의 문제는 `swift test -c release -Xswiftc -enable-testing -Xswiftc -DDEBUG`로 확인합니다.
+한 계정 안에서는 서버가 확인한 계정 UUID를 먼저 검증한 뒤에 사용량을 요청합니다.
+
+온라인 조회는 더 새로운 값이 있을 때만 기록을 대체하며, 실패하면 이전 값과 시각을 유지합니다.
+401은 로그아웃, 403은 단계(프로필·조직·사용량)가 있는 접근 거부, 연결 실패, 요청 제한을 서로
+구분합니다. 표시할 값이 없는 계정에는 로컬 기록의 상태(없음·미지원 형식·조직 구분 불가·오래됨)와
+온라인 실패 원인을 함께 붙여 화면에서 안내합니다. 자동 갱신의 키체인 미승인은 표시할 값이 있으면
+오류로 알리지 않습니다. 요청 제한(429)은 이전 값이 그대로 남으므로 현재 계정에 표시할 값이 있으면
+수동 갱신에서도 알리지 않습니다. 실패한 단계·상태 코드·오류 종류는 인증값 없이 `NSLog`에 남깁니다.
+
+실시간 조회는 데스크톱이 암호화해 둔 로그인 세션을 사용하는 비공식 경로입니다. 데스크톱 기록을
+다시 읽어도 서버의 새 사용량이 생기지는 않으며, 제3자 앱의 Claude.ai 인증정보 사용에는 Anthropic의
+[인증 정책](https://code.claude.com/docs/en/legal-and-compliance#authentication-and-credential-use)상
+제한이 있습니다. 공식 지원 경로가 확인되기 전까지 실시간 값은 보조 수단으로만 다룹니다.
+
+Claude 테스트는 임시 폴더·가짜 앱 런타임·고정 암호화 벡터·모의 HTTP 응답을 사용합니다.
+실제 Claude 설치와 두 계정으로 전환하는 검증은 별도로 필요합니다.
 
 ## Codex 실행 파일 선택과 검증
 

@@ -53,6 +53,8 @@ struct CodexAccount: Decodable, Identifiable, Sendable {
     let lastUsedAt: Int64?
     var lastUsageAt: Int64?
     var lastUsage: UsageSnapshot?
+    // 표시할 사용량이 없을 때 원인과 다음 행동을 안내하며 registry에는 저장하지 않는다.
+    var usageIssues: [any Error] = []
 
     var id: String { accountKey }
 
@@ -79,6 +81,11 @@ struct CodexAccount: Decodable, Identifiable, Sendable {
             .compactMap({ $0 })
             .first(where: { !$0.isEmpty }) else {
             return "Unknown"
+        }
+
+        // Claude의 Pro는 Codex Pro 배율 표기를 적용하지 않는다.
+        if authMode == "claude" {
+            return resolvedPlan.prefix(1).uppercased() + resolvedPlan.dropFirst()
         }
 
         // codex-auth의 Pro Lite/Pro 구분을 현재 Codex 사용량 배율로 표시한다.
@@ -116,27 +123,33 @@ struct CodexAccount: Decodable, Identifiable, Sendable {
 }
 
 // 사용량 응답은 세션 창과 주간 창을 최대 두 개까지 보관한다.
-struct UsageSnapshot: Decodable, Sendable {
+struct UsageSnapshot: Codable, Sendable {
     let primary: UsageWindow?
     let secondary: UsageWindow?
     let planType: String?
+    // Claude가 특정 모델에만 따로 거는 주간 한도이며 없는 서비스에서는 비어 있다.
+    var scoped: [UsageWindow]? = nil
 
     enum CodingKeys: String, CodingKey {
         case primary
         case secondary
         case planType = "plan_type"
+        case scoped
     }
 }
 
-struct UsageWindow: Decodable, Sendable {
+struct UsageWindow: Codable, Sendable {
     let usedPercent: Double
     let windowMinutes: Int?
     let resetsAt: Int64?
+    // 모델별 한도일 때만 그 모델의 표시 이름을 담는다.
+    var scope: String? = nil
 
     enum CodingKeys: String, CodingKey {
         case usedPercent = "used_percent"
         case windowMinutes = "window_minutes"
         case resetsAt = "resets_at"
+        case scope
     }
 }
 
@@ -145,13 +158,16 @@ struct UsageMeter: Identifiable, Equatable, Sendable {
     let windowMinutes: Int
     let remainingPercent: Int
     let resetsAt: Date?
+    // 모델별 한도는 같은 기간의 전체 한도와 구분되도록 모델 이름을 함께 가진다.
+    let scope: String?
 
-    var id: Int { windowMinutes }
+    var id: String { "\(windowMinutes)|\(scope ?? "")" }
 
     init?(window: UsageWindow, now: Date = Date()) {
         guard let windowMinutes = window.windowMinutes else { return nil }
 
         self.windowMinutes = windowMinutes
+        scope = window.scope
         let resetDate = window.resetsAt.map { Date(timeIntervalSince1970: TimeInterval($0)) }
 
         // 이미 끝난 창은 다시 사용 가능한 상태로 표시하고 과거 재설정 시각은 숨긴다.
@@ -177,6 +193,8 @@ struct UsageMeter: Identifiable, Equatable, Sendable {
     }
 
     var displayTitle: String {
+        // 모델별 주간 한도는 "Fable 주간 잔여량"처럼 모델 이름을 앞에 붙인다.
+        if let scope { return L10n.text("%@ 주간 잔여량", scope) }
         switch windowMinutes {
         case 300: return L10n.text("5시간 잔여량")
         case 10_080: return L10n.text("주간 잔여량")

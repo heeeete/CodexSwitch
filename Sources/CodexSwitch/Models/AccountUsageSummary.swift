@@ -26,8 +26,13 @@ struct AccountUsageSummary {
             let label = meter.windowMinutes == 10_080 ? L10n.text("주간") : meter.label
             return "\(label) \(expired ? "—" : "\(meter.remainingPercent)%")"
         }.joined(separator: " · ")
-        let usage = windows.map { meter, expired in
-            let label = meter.windowMinutes == 10_080 ? L10n.text("주간") : meter.label
+        // 계정 목록에는 모델별 주간 한도도 이어 붙이고, 좁은 메뉴 막대에는 전체 한도만 둔다.
+        let scoped = (account.lastUsage?.scoped ?? []).compactMap { window -> (UsageMeter, Bool)? in
+            guard let meter = UsageMeter(window: window, now: now) else { return nil }
+            return (meter, window.resetsAt.map { TimeInterval($0) <= now.timeIntervalSince1970 } ?? false)
+        }
+        let usage = (windows + scoped).map { meter, expired in
+            let label = meter.scope ?? (meter.windowMinutes == 10_080 ? L10n.text("주간") : meter.label)
             return expired ? L10n.text("%@ 재조회 필요", String(label)) : L10n.text("%@ %@%% 남음", String(label), String(meter.remainingPercent))
         }.joined(separator: " · ")
         menuText = "\(usage) · \(Self.ageText(timestamp: account.lastUsageAt, now: now))"
