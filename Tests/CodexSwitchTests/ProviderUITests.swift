@@ -140,13 +140,21 @@ final class ProviderUITests: LocalizedTestCase {
         func natural(_ store: AccountStore) -> CGFloat {
             NSHostingView(rootView: MenuContentView(store: store, updateStore: updates)).fittingSize.height
         }
+        // CI처럼 낮은 화면에서는 메뉴가 화면 한도에서 멈추므로, 그 한도까지 내용 높이를 따르는지 확인한다.
+        let limit = controller.availableContentHeight
+        func expected(_ store: AccountStore) -> CGFloat { min(natural(store), limit) }
         let base = try await settledHeight()
-        XCTAssertEqual(base, natural(accounts.codex), accuracy: 1)
+        XCTAssertEqual(base, expected(accounts.codex), accuracy: 1)
 
         accounts.codex.notice = AccountStore.Notice(
             style: .error, message: "Claude 서버에 연결하지 못했습니다. 네트워크를 확인한 뒤 새로고침해 주세요.")
         let withNotice = try await settledHeight()
-        XCTAssertGreaterThan(withNotice, base + 20)
+        // 안내만큼 길어지고, 그만큼 늘릴 공간이 없는 낮은 화면에서는 한도에서 멈춘다.
+        if base + 20 < limit {
+            XCTAssertGreaterThan(withNotice, base + 20)
+        } else {
+            XCTAssertEqual(withNotice, limit, accuracy: 1)
+        }
         accounts.codex.dismissNotice()
         let dismissed = try await settledHeight()
         XCTAssertEqual(dismissed, base, accuracy: 1)
@@ -154,8 +162,8 @@ final class ProviderUITests: LocalizedTestCase {
         // Claude 탭은 쿠폰 영역이 없어 더 짧고, 빈 공간 없이 그 높이로 줄어든다.
         accounts.select(.claude)
         let claude = try await settledHeight()
-        XCTAssertLessThan(claude, base - 35)
-        XCTAssertEqual(claude, natural(accounts.claude), accuracy: 1)
+        XCTAssertEqual(claude, expected(accounts.claude), accuracy: 1)
+        if natural(accounts.codex) < limit { XCTAssertLessThan(claude, base - 35) }
     }
 
     // Claude 사용량이 비어 있는 이유와 빠진 기간 안내가 두 언어에서 메뉴 폭 안에 표시된다.

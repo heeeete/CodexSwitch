@@ -111,7 +111,8 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
         contentItem.view = hosting
     }
 
-    private var availableContentHeight: CGFloat {
+    // 메뉴가 화면을 넘지 않도록 하는 높이 한도이며, 낮은 화면에서는 이 높이부터 안쪽을 스크롤한다.
+    var availableContentHeight: CGFloat {
         max(100, (statusItem.button?.window?.screen?.visibleFrame.height ?? 800) - 180)
     }
 
