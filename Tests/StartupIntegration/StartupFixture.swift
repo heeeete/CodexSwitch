@@ -6,6 +6,8 @@ import SwiftUI
     let provider: AccountProvider
     let isRestartingForUpdate = false
     let isBusy = false
+    // 실제 Store처럼 계정 메뉴 잠금 여부를 새로 고침과 따로 제공한다.
+    let isAccountOperationBusy = false
     let isConnecting = false
     let accounts: [AccountListItem] = []
     let activeAccountKey: String? = nil
