@@ -20,15 +20,17 @@ PY
 mkdir -p "$TEST_APP/Contents/Resources"
 cp -R "$PROJECT_ROOT/Sources/CodexSwitch/Resources/"*.lproj "$TEST_APP/Contents/Resources/"
 
-# DEBUG는 설치 경로 검사만 건너뛰며 설치된 앱과 같은 startRuntime·NSMenu를 실행한다.
-swiftc -parse-as-library -swift-version 6 -DDEBUG -target "$(uname -m)-apple-macosx14.0" \
+# ad-hoc 앱과 같은 로컬 플래그로 배포 서명 검사 없이 메뉴바까지 시작하는지 확인한다.
+swiftc -parse-as-library -swift-version 6 -DCODEXSWITCH_LOCAL_TEST -target "$(uname -m)-apple-macosx14.0" \
     "$PROJECT_ROOT/Sources/CodexSwitch/CodexSwitchApp.swift" \
     "$PROJECT_ROOT/Sources/CodexSwitch/Localization/LanguageSettings.swift" \
     "$PROJECT_ROOT/Sources/CodexSwitch/Store/AppStartup.swift" \
+    "$PROJECT_ROOT/Sources/CodexSwitch/Store/ProviderAccounts.swift" \
     "$PROJECT_ROOT/Sources/CodexSwitch/Views/StatusMenuController.swift" \
     "$PROJECT_ROOT/Sources/CodexSwitch/Views/CodexSwitchIcon.swift" \
     "$PROJECT_ROOT/Sources/CodexSwitch/Views/SystemConfirmationAlert.swift" \
     "$PROJECT_ROOT/Sources/CodexSwitch/Models/AccountModels.swift" \
+    "$PROJECT_ROOT/Sources/CodexSwitch/Models/AccountProvider.swift" \
     "$PROJECT_ROOT/Sources/CodexSwitch/Models/AccountUsageSummary.swift" \
     "$PROJECT_ROOT/Sources/CodexSwitch/Services/AppInstaller.swift" \
     "$PROJECT_ROOT/Tests/StartupIntegration/StartupFixture.swift" \

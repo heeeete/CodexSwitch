@@ -5,7 +5,8 @@ import SwiftUI
 // 창 배경을 흉내 내지 않고 NSMenu가 시스템의 블러·모서리·그림자를 그리게 한다.
 @MainActor
 final class StatusMenuController: NSObject, NSMenuDelegate {
-    private let store: AccountStore
+    private let accounts: ProviderAccounts
+    private var store: AccountStore { accounts.selectedStore }
     private let updateStore: UpdateStore
     let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
     let menu = NSMenu()
@@ -18,8 +19,13 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
     private var displayTimer: Timer?
     private(set) var settingsWindow: NSWindow?
 
-    init(store: AccountStore, updateStore: UpdateStore) {
-        self.store = store
+    // 기존 단일 Store 호출은 Codex 탭으로 시작해 저장된 서비스 선택의 영향을 받지 않는다.
+    convenience init(store: AccountStore, updateStore: UpdateStore) {
+        self.init(accounts: ProviderAccounts(codex: store, initialProvider: .codex), updateStore: updateStore)
+    }
+
+    init(accounts: ProviderAccounts, updateStore: UpdateStore) {
+        self.accounts = accounts
         self.updateStore = updateStore
         super.init()
         menu.delegate = self
@@ -67,7 +73,7 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
         NSApp.mainMenu = mainMenu
         refreshAccountMenus()
         // Published 값이 반영된 다음, 메뉴 추적 중에도 명령의 활성 상태를 갱신한다.
-        storeObservation = store.objectWillChange.sink { [weak self] _ in
+        storeObservation = accounts.objectWillChange.sink { [weak self] _ in
             RunLoop.main.perform(inModes: [.common]) { [weak self] in
                 MainActor.assumeIsolated { self?.refreshAccountMenus() }
             }
@@ -85,23 +91,36 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
         timer.tolerance = 5
         RunLoop.main.add(timer, forMode: .common)
         displayTimer = timer
-        Task { await store.loadLocalAccounts() }
+        Task { await accounts.selectedStore.loadLocalAccounts() }
     }
 
-    // 메뉴 추적 중에는 프레임을 바꾸지 않고, 다음에 열 때 최신 내용의 높이를 반영한다.
+    // 열 때 현재 탭의 높이로 시작하고, 열려 있는 동안에도 내용이 바뀌면 메뉴 높이를 따라 맞춘다.
     func menuWillOpen(_ menu: NSMenu) {
         refreshAccountMenus()
         guard menu === self.menu else { return }
-        let content = MenuContentView(store: store, updateStore: updateStore)
-        let measurement = NSHostingView(rootView: content)
-        let availableHeight = max(100, (statusItem.button?.window?.screen?.visibleFrame.height ?? 800) - 180)
-        let height = min(measurement.fittingSize.height, availableHeight)
-        let hosting = NSHostingView(rootView:
-            ScrollView(.vertical) { content }
-                .frame(width: 372, height: height, alignment: .top)
-        )
-        hosting.frame = NSRect(x: 0, y: 0, width: 372, height: height)
+        let content = ProviderMenuContentView(accounts: accounts, updateStore: updateStore)
+            // 안내가 뜨거나 닫히고 탭이 바뀌면 그만큼 메뉴를 늘리고 줄여 내부 스크롤과 빈 공간을 만들지 않는다.
+            .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { [weak self] height in
+                self?.resizeContent(to: height)
+            }
+        // 화면보다 긴 내용만 스크롤하도록 뷰포트는 호스팅 뷰의 크기를 그대로 따른다.
+        let hosting = NSHostingView(rootView: ScrollView(.vertical) { content }.frame(width: 372))
+        hosting.sizingOptions = []
+        let contentHeight = NSHostingView(rootView: MenuContentView(store: store, updateStore: updateStore)).fittingSize.height
+        hosting.frame = NSRect(x: 0, y: 0, width: 372, height: min(contentHeight, availableContentHeight))
         contentItem.view = hosting
+    }
+
+    private var availableContentHeight: CGFloat {
+        max(100, (statusItem.button?.window?.screen?.visibleFrame.height ?? 800) - 180)
+    }
+
+    // 항목 뷰의 프레임이 바뀌면 열려 있는 NSMenu도 같은 높이로 다시 배치된다.
+    private func resizeContent(to contentHeight: CGFloat) {
+        guard let view = contentItem.view else { return }
+        let height = min(contentHeight, availableContentHeight)
+        guard abs(view.frame.height - height) > 0.5 else { return }
+        view.setFrameSize(NSSize(width: 372, height: height))
     }
 
     // 하위 메뉴를 닫아도 상위 메뉴의 요약 뷰는 유지한다.
@@ -130,10 +149,14 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
         // 현재 계정만 메뉴바에 표시하고, 연결 계정이 없으면 로고만 남긴다.
         if let active = store.accounts.first(where: { $0.account.accountKey == store.activeAccountKey }),
            let summary = summaries[active.account.accountKey] {
+            // 숫자가 어느 서비스의 사용량인지 선택한 탭의 서비스 아이콘과 읽기 문구로 알린다.
+            statusItem.button?.image = CodexSwitchIcon.menuBarImage(for: store.provider)
             statusItem.button?.title = " " + summary.menuBarText
             statusItem.button?.toolTip = "\(active.account.displayName)\n\(summary.menuText)"
-            statusItem.button?.setAccessibilityLabel("CodexSwitch, \(summary.menuText)")
+            statusItem.button?.setAccessibilityLabel("CodexSwitch, \(store.provider.title), \(summary.menuText)")
         } else {
+            // 숫자 없이 서비스 아이콘만 남으면 그 앱의 메뉴바 아이콘과 헷갈리므로 CodexSwitch 로고로 둔다.
+            statusItem.button?.image = CodexSwitchIcon.menuBarImage
             statusItem.button?.title = ""
             statusItem.button?.toolTip = L10n.text("CodexSwitch · 현재 계정 없음")
             statusItem.button?.setAccessibilityLabel(L10n.text("CodexSwitch, 현재 계정 없음"))
@@ -141,16 +164,20 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
         for (parent, action) in [(switchItem, #selector(switchAccount(_:))), (removeItem, #selector(removeAccount(_:)))] {
             guard let submenu = parent.submenu else { continue }
             // 비활성 부모 아래에서는 자식의 isEnabled도 false이므로 모델로 부모 상태를 먼저 결정한다.
-            parent.isEnabled = !store.isBusy && store.accounts.contains {
+            parent.isEnabled = !accounts.isAccountOperationBusy && store.accounts.contains {
                 parent === removeItem || $0.account.accountKey != store.activeAccountKey
             }
             let keys = store.accounts.map { $0.account.accountKey }
-            if submenu.items.compactMap({ $0.representedObject as? String }) != keys {
+            // 서비스가 달라지면 같은 account key여도 메뉴 항목을 다시 만든다.
+            let providerIdentifier = NSUserInterfaceItemIdentifier(accounts.selectedProvider.rawValue)
+            if submenu.items.compactMap({ $0.representedObject as? String }) != keys
+                || submenu.items.contains(where: { $0.identifier != providerIdentifier }) {
                 submenu.removeAllItems()
                 for key in keys {
                     let item = NSMenuItem(title: "", action: action, keyEquivalent: "")
                     item.target = self
                     item.representedObject = key
+                    item.identifier = providerIdentifier
                     submenu.addItem(item)
                 }
             }
@@ -158,18 +185,23 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
                 let active = account.account.accountKey == store.activeAccountKey
                 let usage = summaries[account.account.accountKey]?.menuText ?? L10n.text("사용량 정보 없음")
                 item.title = "\(account.account.displayName)    \(usage)"
-                item.toolTip = "\(account.account.email) · \(account.account.displayPlan)\n\(usage)"
+                // 현재 계정이 아니어도 사용량이 비어 있는 이유를 항목 설명에서 확인할 수 있게 한다.
+                item.toolTip = (["\(account.account.email) · \(account.account.displayPlan)", usage]
+                    + account.account.usageIssues.map(\.localizedDescription)).joined(separator: "\n")
                 item.state = active ? .on : .off
-                item.isEnabled = !store.isBusy && (parent === removeItem || !active)
+                item.isEnabled = !accounts.isAccountOperationBusy && (parent === removeItem || !active)
             }
         }
         connectionItem.title = store.isConnecting ? L10n.text("추가 취소") : L10n.text("계정 추가")
-        connectionItem.isEnabled = !store.isBusy || store.isConnecting
+        connectionItem.isEnabled = !accounts.isAccountOperationBusy || store.isConnecting
     }
 
     // 오래 열린 메뉴의 계정 객체를 재사용하지 않고 최신 목록에서 대상을 확인한다.
     private func selectedAccount(_ sender: NSMenuItem) -> AccountListItem? {
-        guard !store.isBusy, let key = sender.representedObject as? String else { return nil }
+        guard !accounts.isAccountOperationBusy,
+              sender.identifier?.rawValue == accounts.selectedProvider.rawValue,
+              sender.menu === switchItem.submenu || sender.menu === removeItem.submenu,
+              let key = sender.representedObject as? String else { return nil }
         return store.accounts.first { $0.account.accountKey == key }
     }
 
@@ -186,18 +218,20 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
         Task { @MainActor [weak self] in
             await Task.yield()
             guard let self, let item = selectedAccount(sender) else { return }
+            let selectedStore = store
             guard SystemConfirmationAlert.present(
                 title: L10n.text("이 계정을 이 Mac에서 제거할까요?"),
                 message: removalMessage(for: item),
                 confirmTitle: L10n.text("제거"),
                 confirmIsDestructive: true
             ) else { return }
-            store.removeAccount(item)
+            guard accounts.selectedStore === selectedStore, !accounts.isAccountOperationBusy else { return }
+            selectedStore.removeAccount(item)
         }
     }
 
     @objc private func connectAccount() {
-        guard !store.isBusy || store.isConnecting else { return }
+        guard !accounts.isAccountOperationBusy || store.isConnecting else { return }
         menu.cancelTracking()
         if store.isConnecting { store.cancelConnection() } else { store.connectAccount() }
     }
@@ -205,13 +239,19 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
     private func removalMessage(for item: AccountListItem) -> String {
         let name = item.account.displayName
         let isActive = item.account.accountKey == store.activeAccountKey
-        let localOnly = L10n.text("ChatGPT 계정 자체는 삭제되지 않습니다.")
+        let localOnly = store.provider == .codex
+            ? L10n.text("ChatGPT 계정 자체는 삭제되지 않습니다.")
+            : L10n.text("Claude 계정 자체는 삭제되지 않습니다.")
 
         if isActive, store.accounts.count == 1 {
-            return L10n.text("“%@”은 마지막 계정입니다. 제거하면 ChatGPT를 닫고 이 Mac의 Codex 인증을 해제합니다. %@", String(name), String(localOnly))
+            return store.provider == .codex
+                ? L10n.text("“%@”은 마지막 계정입니다. 제거하면 ChatGPT를 닫고 이 Mac의 Codex 인증을 해제합니다. %@", String(name), String(localOnly))
+                : L10n.text("“%@”은 마지막 계정입니다. 제거하면 Claude를 닫고 이 Mac의 Claude 인증을 해제합니다. %@", String(name), String(localOnly))
         }
         if isActive {
-            return L10n.text("“%@”은 현재 사용 중인 계정입니다. 제거하면 ChatGPT를 안전하게 닫고 남은 계정으로 전환합니다. %@", String(name), String(localOnly))
+            return store.provider == .codex
+                ? L10n.text("“%@”은 현재 사용 중인 계정입니다. 제거하면 ChatGPT를 안전하게 닫고 남은 계정으로 전환합니다. %@", String(name), String(localOnly))
+                : L10n.text("“%@”은 현재 사용 중인 계정입니다. 제거하면 Claude를 안전하게 닫고 남은 계정으로 전환합니다. %@", String(name), String(localOnly))
         }
         return L10n.text("이 Mac에 저장된 “%@”의 인증 정보만 제거합니다. %@", String(name), String(localOnly))
     }
@@ -228,10 +268,10 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
 
     // 독립 NSHostingView는 SwiftUI Scene의 openSettings 환경을 상속하지 않는다.
     @objc func openSettings() {
-        guard !store.isRestartingForUpdate else { return }
+        guard !accounts.isRestartingForUpdate else { return }
         menu.cancelTracking()
         if settingsWindow == nil {
-            let hosting = NSHostingView(rootView: SettingsView(updateStore: updateStore, accountStore: store))
+            let hosting = NSHostingView(rootView: ProviderSettingsView(updateStore: updateStore, accounts: accounts))
             let window = NSWindow(contentRect: NSRect(origin: .zero, size: hosting.fittingSize),
                                   styleMask: [.titled, .closable], backing: .buffered, defer: false)
             window.title = L10n.text("CodexSwitch 설정")
@@ -245,7 +285,7 @@ final class StatusMenuController: NSObject, NSMenuDelegate {
     }
 
     @objc private func quit() {
-        guard !store.isBusy else { return }
+        guard !accounts.isBusy else { return }
         menu.cancelTracking()
         store.quit()
     }

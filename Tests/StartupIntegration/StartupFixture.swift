@@ -3,12 +3,15 @@ import SwiftUI
 
 // 실제 AppKit 진입점·AppStartup을 실행하되 계정과 네트워크 작업만 테스트 대역으로 대체한다.
 @MainActor final class AccountStore: ObservableObject {
+    let provider: AccountProvider
     let isRestartingForUpdate = false
     let isBusy = false
     let isConnecting = false
     let accounts: [AccountListItem] = []
     let activeAccountKey: String? = nil
-    init() {
+    init(provider: AccountProvider = .codex, userDefaults: UserDefaults = .standard) {
+        self.provider = provider
+        guard provider == .codex else { return }
         Task {
             try? await Task.sleep(for: .seconds(2))
             // isVisible만으로는 화면 밖에 남은 미삽입 상태바 창을 구분할 수 없다.
@@ -53,10 +56,22 @@ struct MenuContentView: View {
     var body: some View { Text("Startup test") }
 }
 
+struct ProviderMenuContentView: View {
+    let accounts: ProviderAccounts
+    let updateStore: UpdateStore
+    var body: some View { Text("Startup provider test") }
+}
+
 struct SettingsView: View {
     let updateStore: UpdateStore
     let accountStore: AccountStore
     var body: some View { Text("Startup test settings") }
+}
+
+struct ProviderSettingsView: View {
+    let updateStore: UpdateStore
+    let accounts: ProviderAccounts
+    var body: some View { Text("Startup provider settings") }
 }
 
 struct InstallationView: View {

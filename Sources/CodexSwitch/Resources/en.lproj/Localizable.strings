@@ -130,3 +130,58 @@
 "하루 약 %@%%씩 사용 가능" = "About %@%% available per day";
 "시스템 설정 따르기" = "Follow System";
 "언어 변경은 즉시 적용되며 다음 실행에도 유지됩니다." = "Language changes apply immediately and are saved for the next launch.";
+
+// 서비스별 메뉴와 계정 안내.
+"서비스" = "Service";
+"아래의 ‘계정 추가’를 눌러\nClaude 계정을 추가해 주세요." = "Choose Add Account below\nto add a Claude account.";
+"메뉴를 닫아도 1분마다 사용량을 새로 고칩니다." = "Refresh usage every minute, even when the menu is closed.";
+"변경 후 Claude 열기" = "Open Claude after switching";
+"안전한 계정 변경을 위해 실행 중인 Claude는 항상 먼저 닫습니다." = "To switch accounts safely, a running Claude app is always closed first.";
+"Claude 계정 자체는 삭제되지 않습니다." = "Your Claude account itself will not be deleted.";
+"“%@”은 마지막 계정입니다. 제거하면 Claude를 닫고 이 Mac의 Claude 인증을 해제합니다. %@" = "“%@” is the last account. Removing it closes Claude and clears Claude authentication on this Mac. %@";
+"“%@”은 현재 사용 중인 계정입니다. 제거하면 Claude를 안전하게 닫고 남은 계정으로 전환합니다. %@" = "“%@” is the current account. Removing it safely closes Claude and switches to a remaining account. %@";
+
+// Claude 인증과 사용량 조회 결과.
+" Claude는 닫힌 상태입니다." = " Claude is closed.";
+"계정을 제거하고 이 Mac의 Claude 인증을 해제했습니다.%@" = "The account was removed and Claude authentication was cleared on this Mac.%@";
+"Claude에서 새 계정으로 로그인해 주세요. 완료 후 기존 계정으로 돌아옵니다." = "Sign in to your new account in Claude. Your previous account will be restored afterward.";
+"%@ 계정을 %@했습니다. Claude는 닫힌 상태입니다." = "Account %@ was %@. Claude is closed.";
+"%@ 계정을 %@하고 Claude를 열었습니다." = "Account %@ was %@ and Claude was opened.";
+"Claude 인증을 원래 상태로 복구하지 못했습니다. Claude를 열지 말고 로컬 백업을 확인해 주세요." = "Could not restore Claude authentication. Keep Claude closed and check the local backup.";
+"Claude가 종료되지 않았습니다. 직접 종료한 뒤 다시 시도해 주세요." = "Claude did not quit. Quit it manually and try again.";
+"Claude 앱 위치를 찾지 못했습니다. Claude를 설치한 뒤 다시 시도해 주세요." = "Could not find the Claude app. Install Claude and try again.";
+"Claude 인증 정보를 읽지 못했습니다. 계정을 다시 추가해 주세요." = "Could not read Claude authentication. Add the account again.";
+"Claude 인증이 선택한 계정과 일치하지 않아 작업을 중단했습니다." = "The operation stopped because Claude authentication does not match the selected account.";
+"Claude 사용량 응답을 읽지 못했습니다. 잠시 후 다시 시도해 주세요." = "Could not read the Claude usage response. Try again shortly.";
+"Claude 조회가 일시적으로 제한됐습니다. 마지막 사용량을 유지하고 잠시 후 다시 조회합니다." = "Claude requests are temporarily rate-limited. The last usage is kept and will be checked again later.";
+"Claude 조회에 실패했습니다. 잠시 후 다시 시도해 주세요. (%@)" = "Could not fetch Claude data. Try again shortly. (%@)";
+"Claude 데스크톱 앱을 설치한 뒤 다시 시도해 주세요." = "Install the Claude desktop app and try again.";
+"Claude가 완전히 종료되지 않았습니다. 종료한 뒤 다시 시도해 주세요." = "Claude has not fully quit. Quit it and try again.";
+"Claude 인증을 확인하지 못했습니다. 계정을 다시 추가해 주세요." = "Could not verify Claude authentication. Add the account again.";
+"Claude 계정 정보를 읽지 못했습니다. 로컬 파일을 확인해 주세요." = "Could not read Claude account data. Check the local files.";
+"Claude 인증 경로에 심볼릭 링크가 있어 작업을 중단했습니다." = "The operation stopped because a Claude authentication path is a symbolic link.";
+"선택한 Claude 계정이 목록에서 사라졌습니다. 새로고침해 주세요." = "The selected Claude account is no longer in the list. Please refresh.";
+"저장된 Claude 로그인이 없습니다. 계정을 다시 추가해 주세요." = "No saved Claude sign-in was found. Add the account again.";
+"Claude 로그인 상태가 변경됐습니다. 새로고침한 뒤 다시 시도해 주세요." = "Claude sign-in has changed. Refresh and try again.";
+"Claude 로그인 대기 시간이 지났습니다. 계정 추가를 다시 시도해 주세요." = "The Claude sign-in wait timed out. Try adding the account again.";
+"이전 Claude 계정 작업을 복구해야 합니다. Claude를 종료한 뒤 새로고침해 주세요." = "An interrupted Claude account operation needs recovery. Quit Claude and refresh.";
+"Claude 인증 갱신이 필요합니다. 이 계정으로 Claude를 연 뒤 새로고침해 주세요." = "Claude authentication needs refreshing. Open Claude with this account, then refresh.";
+"Claude 로그인을 확인해 주세요. 해당 계정으로 Claude를 열어 로그인한 뒤 새로고침해 주세요." = "Check your Claude sign-in. Open Claude with that account, sign in, and refresh.";
+"Claude 키체인에 접근하지 못했습니다. 새로고침 버튼을 눌러 접근을 허용해 주세요." = "Could not access the Claude keychain. Choose Refresh and allow access.";
+
+// Claude 데스크톱 기록과 사용량이 비어 있는 이유.
+"Claude가 %@ 조회를 거부했습니다. 로그인 문제가 아닐 수 있으니 잠시 후 다시 시도해 주세요." = "Claude denied the %@ request. This may not be a sign-in problem, so try again shortly.";
+"Claude 서버에 연결하지 못했습니다. 네트워크를 확인한 뒤 새로고침해 주세요." = "Could not connect to Claude. Check your network, then refresh.";
+"Claude가 이 계정의 5시간·주간 사용량을 제공하지 않았습니다." = "Claude did not provide 5-hour or weekly usage for this account.";
+"Claude가 이 계정의 사용량을 아직 기록하지 않았습니다. 이 계정으로 Claude를 연 뒤 새로고침해 주세요." = "Claude has not recorded usage for this account yet. Open Claude with this account, then refresh.";
+"이 Claude 버전의 사용량 기록 형식은 아직 지원하지 않습니다. CodexSwitch를 업데이트해 주세요." = "This Claude version's usage record format is not supported yet. Update CodexSwitch.";
+"같은 조직을 여러 계정이 사용해 기록의 주인을 구분하지 못했습니다. 이 계정으로 Claude를 다시 연 뒤 새로고침해 주세요." = "Several accounts use the same organization, so the record's owner could not be determined. Reopen Claude with this account, then refresh.";
+"마지막 기록(%@)이 오래돼 현재 사용량을 알 수 없습니다. 이 계정으로 Claude를 연 뒤 새로고침해 주세요." = "The last record (%@) is too old to show current usage. Open Claude with this account, then refresh.";
+"프로필" = "profile";
+"조직" = "organization";
+"사용량" = "usage";
+"현재 값은 Claude의 설정 → 사용량에서 확인할 수 있습니다." = "Current values are available in Claude under Settings → Usage.";
+"%@ 기록 없음" = "%@: no record";
+"초기화까지 남은 시간은 새로고침하면 표시됩니다." = "Refresh to show the time until reset.";
+"구독 중인 요금제가 없는 계정입니다. 요금제를 구독하면 5시간·주간 사용량이 표시됩니다." = "This account has no subscription. Subscribe to a plan to see 5-hour and weekly usage.";
+"%@ 주간 잔여량" = "%@ weekly remaining";

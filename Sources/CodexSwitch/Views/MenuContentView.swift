@@ -1,10 +1,30 @@
 import SwiftUI
 
+// 서비스 선택은 표시할 Store만 바꾸며 실제 로그인 상태는 변경하지 않는다.
+struct ProviderMenuContentView: View {
+    @ObservedObject var accounts: ProviderAccounts
+    @ObservedObject var updateStore: UpdateStore
+
+    var body: some View {
+        MenuContentView(
+            store: accounts.selectedStore,
+            updateStore: updateStore,
+            providerSelection: Binding(get: { accounts.selectedProvider }, set: { accounts.select($0) }),
+            isProviderSelectionDisabled: accounts.isAccountOperationBusy,
+            globalIsBusy: accounts.isBusy
+        )
+        .id(accounts.selectedProvider)
+    }
+}
+
 // 기본 메뉴 위쪽의 계정 요약과 설정 토글을 구성한다.
 struct MenuContentView: View {
     @ObservedObject var store: AccountStore
     @ObservedObject private var language = LanguageSettings.shared
     @ObservedObject var updateStore: UpdateStore = UpdateStore()
+    var providerSelection: Binding<AccountProvider>? = nil
+    var isProviderSelectionDisabled = false
+    var globalIsBusy = false
     @Environment(\.colorScheme) private var colorScheme
     @State private var refreshIsHovered = false
     @State private var autoRefreshRowIsHovered = false
@@ -12,6 +32,20 @@ struct MenuContentView: View {
     var body: some View {
         VStack(spacing: 0) {
             header
+
+            // 두 서비스는 같은 너비의 시스템 세그먼트로 구분한다.
+            Picker(L10n.text("서비스"), selection: providerSelection ?? .constant(store.provider)) {
+                ForEach(AccountProvider.allCases) { provider in
+                    Text(provider.title).tag(provider)
+                }
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .frame(maxWidth: .infinity)
+            .disabled(isProviderSelectionDisabled || providerSelection == nil)
+            .padding(.horizontal, 12)
+            .padding(.bottom, 9)
+            .accessibilityLabel(L10n.text("서비스"))
 
             sectionDivider
                 .padding(.horizontal, 12)
@@ -74,11 +108,14 @@ struct MenuContentView: View {
             .onHover { hovering in
                 refreshIsHovered = hovering
             }
-            .disabled((store.isBusy && !store.isRefreshing) || store.accounts.isEmpty)
+            // Claude는 저장 계정이 없어도 기존 로그인 가져오기와 중단된 작업 복구를 재시도한다.
+            // 다른 서비스는 계정 작업 중일 때만 막고, 그 서비스의 새로 고침과는 따로 실행할 수 있다.
+            .disabled(((store.isBusy || isProviderSelectionDisabled) && !store.isRefreshing)
+                      || (store.provider == .codex && store.accounts.isEmpty))
             .help(
                 store.isRefreshing
                     ? L10n.text("사용량 새로 고침 취소")
-                    : L10n.text("사용량과 쿠폰 새로 고침")
+                    : (store.provider == .codex ? L10n.text("사용량과 쿠폰 새로 고침") : L10n.text("사용량 새로 고침"))
             )
             .accessibilityLabel(store.isRefreshing ? L10n.text("사용량 새로 고침 취소") : L10n.text("사용량 새로 고침"))
         }
@@ -105,7 +142,8 @@ struct MenuContentView: View {
                     switchingAccountKey: store.switchingAccountKey,
                     removingAccountKey: store.removingAccountKey,
                     isDisabled: store.isBusy,
-                    resetCreditState: store.resetCreditState
+                    resetCreditState: store.resetCreditState,
+                    showsResetCredits: store.provider == .codex
                 )
             }
         }
@@ -127,7 +165,9 @@ struct MenuContentView: View {
                 Text(L10n.text("저장된 계정이 없습니다"))
                     .font(.system(size: 14, weight: .semibold, design: .rounded))
 
-                Text(L10n.text("아래의 ‘계정 추가’를 눌러\nChatGPT 계정을 추가해 주세요."))
+                Text(store.provider == .codex
+                     ? L10n.text("아래의 ‘계정 추가’를 눌러\nChatGPT 계정을 추가해 주세요.")
+                     : L10n.text("아래의 ‘계정 추가’를 눌러\nClaude 계정을 추가해 주세요."))
                     .font(.system(size: 12))
                     .foregroundStyle(CodexSwitchDesign.secondaryText(for: colorScheme))
                     .multilineTextAlignment(.center)
@@ -175,10 +215,12 @@ struct MenuContentView: View {
                 .onHover { hovering in
                     autoRefreshRowIsHovered = hovering
                 }
-                .help(L10n.text("메뉴를 닫아도 1분마다 사용량과 쿠폰을 새로 고칩니다."))
+                .help(store.provider == .codex
+                      ? L10n.text("메뉴를 닫아도 1분마다 사용량과 쿠폰을 새로 고칩니다.")
+                      : L10n.text("메뉴를 닫아도 1분마다 사용량을 새로 고칩니다."))
 
                 HStack(spacing: 8) {
-                    Text(L10n.text("변경 후 ChatGPT 열기"))
+                    Text(store.provider == .codex ? L10n.text("변경 후 ChatGPT 열기") : L10n.text("변경 후 Claude 열기"))
                         .font(.system(size: 13))
 
                     Spacer()
@@ -187,6 +229,7 @@ struct MenuContentView: View {
                         .labelsHidden()
                         .toggleStyle(.switch)
                         .controlSize(.mini)
+                        .accessibilityLabel(store.provider == .codex ? L10n.text("변경 후 ChatGPT 열기") : L10n.text("변경 후 Claude 열기"))
                 }
                 .frame(minHeight: 28)
                 .padding(.horizontal, 9)
@@ -199,7 +242,9 @@ struct MenuContentView: View {
                 .onHover { hovering in
                     restartRowIsHovered = hovering
                 }
-                .help(L10n.text("안전한 계정 변경을 위해 실행 중인 ChatGPT는 항상 먼저 닫습니다."))
+                .help(store.provider == .codex
+                      ? L10n.text("안전한 계정 변경을 위해 실행 중인 ChatGPT는 항상 먼저 닫습니다.")
+                      : L10n.text("안전한 계정 변경을 위해 실행 중인 Claude는 항상 먼저 닫습니다."))
             }
             .padding(.horizontal, 6)
             .padding(.vertical, 6)
@@ -208,7 +253,7 @@ struct MenuContentView: View {
             if updateStore.status != .idle {
                 sectionDivider
                     .padding(.horizontal, 12)
-                UpdateNoticeView(updateStore: updateStore, isBusy: store.isBusy)
+                UpdateNoticeView(updateStore: updateStore, isBusy: store.isBusy || globalIsBusy)
             }
         }
     }

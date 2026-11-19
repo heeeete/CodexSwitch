@@ -14,6 +14,7 @@
 
 ## Features
 
+- **Codex / Claude tabs** — View each service's accounts and usage separately. Selecting a tab changes the view; **Switch Account** changes the actual sign-in. The menu bar shows the selected service's icon next to the numbers.
 - **Account switching** — Switch between saved accounts without opening a terminal.
 - **Usage overview** — See remaining Codex usage, the time until reset, and an estimated daily allowance at a glance.
 - **Reset credits** — View the current account’s available credits in order of soonest expiry. Remaining time is shown in a compact format such as `5d 20h`, and credits are fetched automatically.
@@ -41,7 +42,8 @@ once that operation finishes.
 
 - macOS 14 or later
 - An Apple Silicon Mac
-- Either the official Codex CLI or the official ChatGPT desktop app
+- For Codex: the official Codex CLI or ChatGPT desktop app
+- For Claude: the official Claude desktop app
 
 ## Usage
 
@@ -61,14 +63,41 @@ After switching accounts, restart your client to use the new account:
 
 Usage is based on recent records. After switching accounts, “No usage data” may appear until new usage is recorded.
 
+### Claude Desktop
+
+The **Claude** tab imports the account signed in to Claude Desktop and shows its remaining five-hour and weekly usage.
+By default it reads the usage records Claude Desktop keeps on this Mac. This needs no Keychain approval or network
+request, and shows the figures and time of Claude's last record. Opening or restarting Claude creates a new record.
+
+Click **Refresh** and allow access to **Claude Safe Storage** in the macOS Keychain to also fetch live usage and reset
+times. Background refresh never opens a Keychain permission prompt. Live lookup is an unofficial path that depends on the
+desktop sign-in session, so Claude-side changes or policy may reject it; the desktop records are still shown when it does.
+
+A weekly limit that applies to one model only, such as Fable, is available from live lookup only. After a successful
+lookup it is shown with the model name (“Fable weekly remaining”); it is not shown when only desktop records exist.
+
+If only one window has a value, that value is shown. When there is none, the tab explains why (no record yet, a stale
+record, an organization that cannot be told apart, a denied request) and what to do next. Current values are also
+available in Claude under **Settings → Usage**.
+
+**Add Account** closes Claude and opens its sign-in screen. After sign-in or cancellation, the previous account is restored.
+**Switch Account** waits for Claude to quit completely, then restores the selected account's encrypted authentication cache
+and cookies. Enable **Open Claude after switching** to reopen it automatically. Refresh and reopen preferences are saved
+separately for each service.
+
+Accounts and usage can be read from the desktop sign-in even before a Code OAuth token exists.
+If a saved sign-in session expires, open Claude with that account and refresh again. A server-revoked session requires a new
+sign-in. This feature manages Claude Desktop; it does not change the account of separately running Claude Code CLI sessions.
+
 ## Data and Accounts
 
 - Account information is stored on this Mac and is not sent to a separate CodexSwitch server.
 - Existing sign-in information is backed up locally before switching accounts.
+- Claude profiles are stored in `~/Library/Application Support/CodexSwitch/Claude`, with authentication caches and cookies kept encrypted. The original Claude Keychain entry is not changed.
 - Avoid changing the same accounts in other tools while CodexSwitch is switching or removing an account.
 
 ## Open Source and Notices
 
 CodexSwitch includes [`codex-auth`](https://github.com/Loongphy/codex-auth), which is licensed under the MIT License. See [Third-party notices](THIRD_PARTY_NOTICES.md) for full attribution and licensing details.
 
-No separate open-source license applies to CodexSwitch’s own source code. CodexSwitch is not affiliated with OpenAI and is not an official product endorsed by OpenAI. ChatGPT and Codex are trademarks of their respective owners.
+No separate open-source license applies to CodexSwitch’s own source code. CodexSwitch is not affiliated with or endorsed by OpenAI or Anthropic. ChatGPT, Codex, and Claude are trademarks of their respective owners.

@@ -36,6 +36,29 @@ enum CodexSwitchIcon {
         return image
     }()
 
+    // 메뉴바 사용량이 어느 서비스의 것인지 그 서비스 앱이 메뉴바에 쓰는 아이콘으로 구분한다.
+    static func menuBarImage(for provider: AccountProvider) -> NSImage {
+        provider == .codex ? codexMenuBarImage : claudeMenuBarImage
+    }
+
+    // 다른 회사의 아이콘을 앱에 포함하지 않고, 설치된 앱에서 실행 중 처음 한 번만 읽는다.
+    private static let codexMenuBarImage = serviceMenuBarImage(
+        .codex, appURL: NSWorkspace.shared.urlForApplication(withBundleIdentifier: AccountProvider.codex.bundleIdentifier)
+    )
+    private static let claudeMenuBarImage = serviceMenuBarImage(
+        .claude, appURL: NSWorkspace.shared.urlForApplication(withBundleIdentifier: AccountProvider.claude.bundleIdentifier)
+    )
+
+    // 앱이 없거나 업데이트로 아이콘 파일 이름이 바뀌면 CodexSwitch 로고로 대신한다.
+    static func serviceMenuBarImage(_ provider: AccountProvider, appURL: URL?) -> NSImage {
+        let resource = provider == .codex ? "chatgptTemplate" : "TrayIconTemplate"
+        guard let appURL, let image = Bundle(url: appURL)?.image(forResource: resource) else { return menuBarImage }
+        image.size = NSSize(width: 18, height: 18)
+        image.isTemplate = true
+        image.accessibilityDescription = provider.title
+        return image
+    }
+
     static let image: NSImage = {
         if let iconURL = Bundle.main.url(forResource: "CodexSwitch", withExtension: "icns"),
            let bundledIcon = NSImage(contentsOf: iconURL) {

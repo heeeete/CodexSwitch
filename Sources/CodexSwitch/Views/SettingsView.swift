@@ -1,10 +1,23 @@
 import SwiftUI
 import ServiceManagement
 
+// 열린 설정 창도 서비스 선택과 두 계정 작업의 busy 상태를 함께 관찰한다.
+struct ProviderSettingsView: View {
+    @ObservedObject var updateStore: UpdateStore
+    @ObservedObject var accounts: ProviderAccounts
+
+    var body: some View {
+        SettingsView(updateStore: updateStore, accountStore: accounts.selectedStore,
+                     globalIsBusy: accounts.isBusy, globalIsRestarting: accounts.isRestartingForUpdate)
+    }
+}
+
 // 앱 설정은 시스템 기본 폼과 컨트롤로 제공한다.
 struct SettingsView: View {
     @ObservedObject var updateStore: UpdateStore
     @ObservedObject var accountStore: AccountStore
+    var globalIsBusy = false
+    var globalIsRestarting = false
     @ObservedObject private var language = LanguageSettings.shared
     @ObservedObject private var loginItem = LoginItemSettings.shared
 
@@ -44,7 +57,7 @@ struct SettingsView: View {
                     get: { updateStore.automaticallyChecksForUpdates },
                     set: { updateStore.setAutomaticallyChecksForUpdates($0) }
                 ))
-                .disabled(accountStore.isRestartingForUpdate)
+                .disabled(accountStore.isRestartingForUpdate || globalIsRestarting)
 
                 HStack {
                     Text(updateStore.checkMessage)
@@ -52,7 +65,7 @@ struct SettingsView: View {
                         .foregroundStyle(.secondary)
                     Spacer()
                     Button(L10n.text("지금 확인")) { updateStore.checkForUpdates() }
-                        .disabled(!updateStore.canCheckForUpdates || accountStore.isRestartingForUpdate
+                        .disabled(!updateStore.canCheckForUpdates || accountStore.isRestartingForUpdate || globalIsRestarting
                             || (updateStore.status != .idle && updateStore.status != .failed))
                 }
             } header: {
@@ -64,7 +77,7 @@ struct SettingsView: View {
             // 설정 창에서도 메뉴 하단과 같은 재시작 동작을 사용할 수 있다.
             if updateStore.status != .idle {
                 Section {
-                    UpdateNoticeView(updateStore: updateStore, isBusy: accountStore.isBusy)
+                    UpdateNoticeView(updateStore: updateStore, isBusy: accountStore.isBusy || globalIsBusy)
                 }
             }
         }
